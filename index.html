@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>타로 시그널 (Tarot Signal)</title>
+
+<!-- Open Graph / 카카오톡 공유 미리보기 -->
+<meta property="og:type"        content="website"/>
+<meta property="og:title"       content="타로 시그널 (Tarot Signal)"/>
+<meta property="og:description" content="세 장의 카드가 당신의 길을 안내할 거예요."/>
+<meta property="og:site_name"   content="타로 시그널"/>
+<meta name="description"        content="세 장의 카드가 당신의 길을 안내할 거예요."/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+// html2canvas 로드 실패 시 unpkg fallback
+window.addEventListener('error', function(e) {
+  if(e.target && e.target.src && e.target.src.includes('html2canvas') && typeof html2canvas === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js';
+    document.head.appendChild(s);
+  }
+}, true);
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#c9a96e;--gold2:rgba(201,169,110,0.18);--gold3:rgba(201,169,110,0.06);
+  --bg:#0d0a1a;--bg2:#120d22;--bg3:#1a1130;
+  --text:#e8dfc8;--muted:#8a7d6a;--faint:#5a5248;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;min-height:100vh;overflow-x:hidden}
+#app{max-width:900px;margin:0 auto;padding:2.5rem 1.2rem 4rem;overflow-x:hidden}
+@media(max-width:480px){
+  #app{padding:1.5rem .8rem 3rem}
+}
+
+/* Header */
+.hdr{text-align:center;margin-bottom:2.5rem}
+.hdr-eye{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.25em;color:#5a5248;text-transform:uppercase}
+.divider{width:100px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.6rem auto}
+.hdr h1{font-family:'Cinzel',serif;font-size:clamp(1.6rem,5vw,2.4rem);font-weight:700;color:var(--gold);letter-spacing:.1em;margin-bottom:.3rem}
+.hdr p{font-size:.85rem;color:var(--muted);font-style:italic}
+
+/* API / Question */
+.panel{background:var(--gold3);border:1px solid rgba(201,169,110,.18);border-radius:10px;padding:1.1rem 1.4rem;margin-bottom:1.4rem}
+.lbl{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:.5rem}
+input[type=password],textarea{
+  width:100%;background:rgba(201,169,110,.07);border:1px solid rgba(201,169,110,.25);
+  border-radius:6px;color:var(--text);font-family:'Lora',Georgia,serif;font-size:.9rem;
+  padding:.55rem .9rem;outline:none;transition:border-color .3s
+}
+input[type=password]:focus,textarea:focus{border-color:rgba(201,169,110,.55)}
+input[type=password]::placeholder,textarea::placeholder{color:var(--faint)}
+textarea{resize:vertical;min-height:80px}
+.note{font-size:.68rem;color:#5a5248;margin-top:.45rem;font-style:italic}
+
+/* Controls */
+.ctrl{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.8rem}
+.btn{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.6rem 1.5rem;border-radius:40px;border:1px solid rgba(201,169,110,.4);
+  cursor:pointer;transition:all .3s;background:transparent;color:var(--gold)}
+.btn:hover:not(:disabled){background:rgba(201,169,110,.12);border-color:var(--gold);box-shadow:0 0 18px rgba(201,169,110,.15)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn-p{background:rgba(201,169,110,.15);border-color:var(--gold)}
+.btn-p:hover:not(:disabled){background:rgba(201,169,110,.26)}
+
+/* ── DECK SCROLL AREA ── */
+.spread-label{
+  font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;
+  color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:.7rem
+}
+#deck-fan{
+  position:relative;
+  width:100%;
+  height:168px;           /* hover lift(22px) + 카드(118px) + 여유(28px) */
+  overflow:hidden;
+}
+#deck-scroll-wrap{
+  position:absolute;
+  left:0;right:0;
+  bottom:0;               /* 카드를 아래 기준으로 정렬 → hover 시 위로 올라가도 잘 보임 */
+  height:100%;
+  overflow-x:auto;overflow-y:visible;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(201,169,110,.35) transparent;
+}
+#deck-scroll-wrap::-webkit-scrollbar{height:4px}
+#deck-scroll-wrap::-webkit-scrollbar-track{background:transparent}
+#deck-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(201,169,110,.35);border-radius:2px}
+#deck-row{
+  display:flex;
+  align-items:flex-end;   /* 카드 하단 기준 정렬 */
+  min-height:100%;
+  padding:28px 20px 8px;  /* 위 여백 = hover lift 공간 */
+  width:max-content;
+}
+
+/* ── MINI CARD ── */
+.mini-card{
+  flex-shrink:0;
+  width:72px;height:118px;
+  border-radius:8px;
+  cursor:grab;
+  user-select:none;
+  touch-action:pan-x;  /* 가로 스크롤은 허용, 세로만 차단 */
+  box-shadow:3px 4px 12px rgba(0,0,0,.55);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s, opacity .3s;
+  margin-right:-28px;
+  position:relative;
+}
+.mini-card.dragging{
+  touch-action:none;  /* 드래그 중엔 모든 스크롤 차단 */
+}
+.mini-card:last-child{margin-right:0}
+.mini-card:hover{
+  transform:translateY(-20px) scale(1.08) !important;
+  box-shadow:0 14px 32px rgba(0,0,0,.65),0 0 18px rgba(201,169,110,.25) !important;
+  z-index:100 !important;
+  margin-right:-28px !important;
+}
+.mini-card.dragging{opacity:.3;cursor:grabbing;transform:scale(.92) !important}
+.mini-card.used{opacity:.2;cursor:not-allowed;pointer-events:none;filter:grayscale(.6)}
+.mini-card svg{width:100%;height:100%;border-radius:8px;display:block}
+
+.mini-card.hint{ opacity:.35;pointer-events:none; }
+.mini-card.hint:nth-child(odd){ transform:translateY(-3px) rotate(-1deg) }
+.mini-card.hint:nth-child(even){ transform:translateY(3px) rotate(1deg) }
+
+/* ── DROP ZONES ── */
+.slots-area{margin-top:1.6rem}
+.slots-row{
+  display:flex;
+  gap:.7rem;
+  justify-content:center;
+  flex-wrap:nowrap;       /* 절대 줄바꿈 안 함 */
+}
+.slot-wrap{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;max-width:140px}
+.slot-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.12em;color:#7a6e5f;text-transform:uppercase;white-space:nowrap}
+.drop-slot{
+  width:100%;
+  aspect-ratio:110/185;   /* 비율 고정 — 너비에 따라 높이 자동 */
+  border-radius:10px;
+  border:2px dashed rgba(201,169,110,.3);
+  background:rgba(201,169,110,.03);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .3s;position:relative;
+}
+.drop-slot.drag-over{border-color:var(--gold);background:rgba(201,169,110,.1);box-shadow:0 0 24px rgba(201,169,110,.2)}
+.drop-slot.filled{border-style:solid;border-color:rgba(201,169,110,.4)}
+.slot-hint{font-family:'Cinzel',serif;font-size:.54rem;color:#4a4238;text-align:center;letter-spacing:.05em;padding:.3rem}
+.slot-inner{width:100%;height:100%;border-radius:8px;overflow:hidden;position:relative}
+.slot-inner svg{width:100%;height:100%;display:block;border-radius:8px}
+.slot-inner.reversed svg{transform:rotate(180deg)}
+.rev-badge{
+  position:absolute;font-family:'Cinzel',serif;font-size:.42rem;
+  letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(18,13,34,.9);color:#e8a090;border:1px solid rgba(220,130,110,.35);
+  padding:2px 6px;border-radius:3px;pointer-events:none;white-space:nowrap;
+  bottom:5px;left:50%;transform:translateX(-50%);
+}
+.slot-inner.reversed .rev-badge{top:5px;bottom:auto;transform:translateX(-50%) rotate(180deg)}
+.remove-btn{
+  position:absolute;top:6px;right:6px;
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(13,10,26,.9);
+  border:1.5px solid rgba(201,169,110,.55);
+  color:var(--gold);font-size:.75rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;z-index:10;
+  box-shadow:0 2px 8px rgba(0,0,0,.5);
+  line-height:1;
+}
+.remove-btn:hover{
+  background:rgba(201,169,110,.25);
+  border-color:var(--gold);
+  transform:scale(1.15);
+  box-shadow:0 0 10px rgba(201,169,110,.3);
+}
+
+/* ── 모바일 ── */
+@media(max-width:480px){
+  #deck-fan{height:134px}
+  #deck-row{padding:22px 12px 6px}
+  .mini-card{width:54px;height:89px;margin-right:-20px}
+  .mini-card:last-child{margin-right:0}
+  .mini-card:hover{transform:translateY(-16px) scale(1.08) !important;margin-right:-20px !important}
+  .slots-row{gap:.45rem}
+  .slot-label{font-size:.52rem;letter-spacing:.08em}
+}
+
+/* ── RESULT MODAL ── */
+#result-modal-bg{
+  display:none;
+  position:fixed;inset:0;z-index:3000;
+  background:rgba(0,0,0,.72);
+  align-items:center;justify-content:center;
+  padding:1rem;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:fadeIn .2s ease;
+}
+#result-modal-bg.on{ display:flex; }
+
+#result-modal{
+  position:relative;
+  background:#0d0a1a;
+  border:1px solid rgba(201,169,110,.3);
+  border-radius:16px;
+  width:100%;max-width:560px;
+  max-height:90vh;
+  overflow-y:auto;
+  padding:2.2rem 1.8rem 1.6rem;
+  box-shadow:0 24px 60px rgba(0,0,0,.8),0 0 40px rgba(201,169,110,.08);
+  animation:slideUp .28s cubic-bezier(.2,.8,.3,1);
+  scrollbar-width:thin;
+  scrollbar-color:rgba(201,169,110,.3) transparent;
+}
+#result-modal::-webkit-scrollbar{width:4px}
+#result-modal::-webkit-scrollbar-thumb{background:rgba(201,169,110,.3);border-radius:2px}
+
+#result-close-btn{
+  position:absolute;
+  top:14px;right:14px;
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(201,169,110,.12);
+  border:1px solid rgba(201,169,110,.3);
+  color:var(--gold);font-size:.8rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;z-index:10;
+}
+#result-close-btn:hover{background:rgba(201,169,110,.25);border-color:var(--gold)}
+
+#result-box{ margin-bottom:1.2rem; }
+.result-title{
+  font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);
+  letter-spacing:.1em;
+  text-align:center;
+  width:100%;
+  display:block;
+  margin-bottom:.5rem;
+}
+.result-datetime{font-family:'Cinzel',serif;font-size:.62rem;color:#6a5e50;text-align:center;letter-spacing:.08em;margin-bottom:.9rem}
+.result-question{font-family:'Lora',Georgia,serif;font-size:.82rem;font-style:italic;color:#8a7d6a;text-align:center;margin-bottom:1.2rem;padding-bottom:.9rem;border-bottom:1px solid rgba(201,169,110,.12)}
+.result-question:empty{display:none}
+.result-cards-row{display:flex;gap:1rem;justify-content:center;margin-bottom:1.2rem}
+.result-card-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;max-width:120px}
+.result-card-item .rc-label{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.12em;color:#7a6e5f;text-transform:uppercase}
+.rc-svg-wrap{position:relative;width:100%}
+.rc-svg-wrap .rc-svg{width:100%;aspect-ratio:72/118;border-radius:7px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.rc-svg-wrap .rc-svg svg{width:100%;height:100%;display:block}
+.rc-svg-wrap.reversed .rc-svg svg{transform:rotate(180deg)}
+.rc-rev-badge{
+  position:absolute;
+  bottom:5px;left:50%;transform:translateX(-50%);
+  font-family:'Cinzel',serif;font-size:.42rem;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(18,13,34,.9);color:#e8a090;
+  border:1px solid rgba(220,130,110,.4);
+  padding:2px 7px;border-radius:3px;white-space:nowrap;pointer-events:none;
+}
+.rc-svg-wrap.reversed .rc-rev-badge{
+  top:5px;bottom:auto;
+  transform:translateX(-50%) rotate(180deg);
+}
+.pills{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.2rem}
+.pill{font-size:.66rem;font-family:'Cinzel',serif;color:var(--gold);border:1px solid rgba(201,169,110,.3);border-radius:20px;padding:.22rem .8rem;letter-spacing:.04em}
+.result-text{font-size:.95rem;line-height:1.9;color:#d4c8b0;white-space:pre-wrap}
+.loading{text-align:center;padding:2rem;color:var(--muted);font-style:italic;font-size:.9rem}
+.save-wrap{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap}
+.btn-reset{border-color:rgba(201,169,110,.3);color:var(--muted)}
+.btn-reset:hover:not(:disabled){background:rgba(201,169,110,.08);border-color:rgba(201,169,110,.5);color:var(--gold)}
+@media(max-width:480px){
+  #result-modal{padding:1.5rem 1.1rem 1.3rem}
+  .result-cards-row{gap:.6rem}
+}
+
+/* ── API Key 우측 상단 버튼 ── */
+#api-btn{
+  position:fixed;top:16px;right:16px;z-index:1000;
+  font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
+  padding:.45rem 1rem;border-radius:30px;
+  border:1px solid rgba(201,169,110,.4);
+  background:rgba(13,10,26,.88);color:var(--gold);
+  cursor:pointer;display:flex;align-items:center;gap:.4rem;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:all .25s;
+}
+#api-btn:hover{background:rgba(201,169,110,.14);border-color:var(--gold);box-shadow:0 0 16px rgba(201,169,110,.18)}
+#api-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:#4a4238;flex-shrink:0;
+  transition:background .3s;
+}
+#api-dot.active{background:#52b788;box-shadow:0 0 6px rgba(82,183,136,.7)}
+
+/* ── 모달 배경 ── */
+#api-modal-bg{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(0,0,0,.65);
+  display:flex;align-items:center;justify-content:center;
+  padding:1rem;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ── 모달 박스 ── */
+#api-modal{
+  background:#120d22;
+  border:1px solid rgba(201,169,110,.3);
+  border-radius:14px;
+  padding:2rem 2rem 1.6rem;
+  width:100%;max-width:420px;
+  box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 40px rgba(201,169,110,.08);
+  animation:slideUp .25s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{
+  font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.1em;
+  color:var(--gold);text-align:center;margin-bottom:.8rem;
+}
+.modal-desc{font-size:.78rem;color:var(--muted);line-height:1.7;text-align:center;margin-bottom:1.2rem}
+#api-key-input{
+  width:100%;background:rgba(201,169,110,.07);
+  border:1px solid rgba(201,169,110,.25);border-radius:7px;
+  color:var(--text);font-family:'Lora',Georgia,serif;font-size:.9rem;
+  padding:.75rem 1rem;outline:none;transition:border-color .3s;
+  margin-bottom:.2rem;
+}
+#api-key-input:focus{border-color:rgba(201,169,110,.55)}
+#api-key-input::placeholder{color:var(--faint)}
+#api-status{
+  font-size:.72rem;margin-top:.6rem;margin-bottom:.2rem;min-height:1.4em;
+  text-align:center;font-style:italic;
+}
+#api-status.ok{color:#52b788}
+#api-status.err{color:#e07a5f}
+.modal-btns{display:flex;gap:.8rem;justify-content:flex-end;margin-top:1.6rem;padding-top:1rem;border-top:1px solid rgba(201,169,110,.1)}
+/* Drag ghost */
+#drag-ghost{
+  position:fixed;pointer-events:none;z-index:9999;
+  width:68px;height:112px;border-radius:7px;opacity:.88;
+  transform:translate(-50%,-50%) rotate(6deg) scale(1.05);
+  box-shadow:0 16px 40px rgba(0,0,0,.6),0 0 20px rgba(201,169,110,.25);
+  display:none;
+}
+#drag-ghost svg{width:100%;height:100%;border-radius:7px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── API Key 모달 ── -->
+<div id="api-modal-bg" onclick="closeApiModal(event)" style="display:none">
+  <div id="api-modal">
+    <div class="modal-title">✦ API Key 설정</div>
+    <p class="modal-desc">Anthropic API Key를 입력하면 Claude AI가 직접 타로를 해석합니다.<br>미입력 시 내장 해석 로직이 사용됩니다.</p>
+    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <div id="api-status"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeApiModal()">취소</button>
+      <button class="btn btn-p" onclick="saveApiKey()">✦ 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- API Key 버튼 — Worker로 이전 후 불필요
+<button id="api-btn" onclick="openApiModal()" title="API Key 설정">
+  <span id="api-dot"></span>
+  API Key
+</button>
+-->
+
+<div class="hdr">
+  <p class="hdr-eye">✦ Tarot Signal ✦</p>
+  <div class="divider"></div>
+  <h1>타로 시그널</h1>
+  <p>세 장의 카드가 당신의 길을 안내할 거예요.</p>
+</div>
+
+<div class="panel">
+  <div class="lbl">✦ 질문 또는 고민</div>
+  <textarea id="question" placeholder="궁금한 것, 고민하는 것을 자유롭게 적어주세요..."></textarea>
+</div>
+
+<div class="ctrl">
+  <button class="btn btn-p" id="shuffle-btn" onclick="doShuffle()">✦ 카드 섞기</button>
+  <button class="btn" id="read-btn" onclick="doReading()" disabled>✦ 결과 보기</button>
+</div>
+
+<!-- Deck scroll -->
+<div class="spread-label">— 세 장의 카드를 아래 칸으로 옮겨주세요 —</div>
+<div id="deck-fan">
+  <div id="deck-scroll-wrap">
+    <div id="deck-row"></div>
+  </div>
+</div>
+
+<!-- Drop slots -->
+<div class="slots-area">
+  <div class="slots-row">
+    <div class="slot-wrap">
+      <div class="slot-label">과 거</div>
+      <div class="drop-slot" id="slot-0" data-slot="0">
+        <div class="slot-hint">카드를<br>여기로</div>
+      </div>
+    </div>
+    <div class="slot-wrap">
+      <div class="slot-label">현 재</div>
+      <div class="drop-slot" id="slot-1" data-slot="1">
+        <div class="slot-hint">카드를<br>여기로</div>
+      </div>
+    </div>
+    <div class="slot-wrap">
+      <div class="slot-label">미 래</div>
+      <div class="drop-slot" id="slot-2" data-slot="2">
+        <div class="slot-hint">카드를<br>여기로</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drag ghost -->
+<div id="drag-ghost"></div>
+
+<!-- Result Modal -->
+<div id="result-modal-bg" onclick="closeResultModal(event)">
+  <div id="result-modal">
+    <button id="result-close-btn" onclick="closeResultModal()">✕</button>
+    <div id="result-box">
+      <div class="result-title">✦ 타로 리딩 ✦</div>      <div class="result-datetime" id="result-datetime"></div>
+      <div class="result-question" id="result-question"></div>
+      <div class="result-cards-row" id="result-cards-row"></div>
+      <div id="result-content"></div>
+    </div>
+    <div class="save-wrap">
+      <button class="btn" onclick="doSave()">✦ 이미지로 저장</button>
+      <button class="btn btn-reset" onclick="doReset()">↺ 다시 보기</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════════════
+// 타로 덱 데이터
+// ══════════════════════════════════════════════════
+// ── 수트별 색상 팔레트 ──
+// Wands(불): 주황/붉은 계열 | Cups(물): 파란 계열 | Swords(공기): 회청 계열 | Pentacles(땅): 녹갈 계열
+const SUIT = {
+  wands:     {color:"#7b2d00", accent:"#f4a261", bg:"#1a0800", symbol:"🔥", suit:"완드"},
+  cups:      {color:"#023e8a", accent:"#74c0fc", bg:"#03045e", symbol:"🌊", suit:"컵"},
+  swords:    {color:"#1c3144", accent:"#a8dadc", bg:"#0a1520", symbol:"💨", suit:"소드"},
+  pentacles: {color:"#2d5016", accent:"#95d44a", bg:"#0d1a06", symbol:"🌿", suit:"펜타클"},
+};
+const NUMS = ["에이스","2","3","4","5","6","7","8","9","10","페이지","나이트","퀸","킹"];
+const NUMS_EN = ["Ace","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Page","Knight","Queen","King"];
+
+function minorCards(suitKey, startId) {
+  const s = SUIT[suitKey];
+  return NUMS.map((kr, i) => ({
+    id: startId + i,
+    name: `${NUMS_EN[i]} of ${suitKey.charAt(0).toUpperCase()+suitKey.slice(1)}`,
+    kr: `${kr} of ${s.suit}`,
+    num: NUMS_EN[i][0] === 'A' ? 'A' : String(i+1 > 10 ? ['P','Kn','Q','K'][i-10] : i+1),
+    color: s.color, accent: s.accent, bg: s.bg, symbol: s.symbol,
+    suit: suitKey,
+  }));
+}
+
+const DECK = [
+  // ── 메이저 아르카나 (0–21) ──
+  {id:0, name:"The Fool",           kr:"바보",           num:"0",   color:"#2d6a4f", accent:"#52b788", symbol:"☽",  bg:"#081c15"},
+  {id:1, name:"The Magician",       kr:"마법사",          num:"I",   color:"#9b2226", accent:"#e63946", symbol:"∞",  bg:"#1a0a0b"},
+  {id:2, name:"The High Priestess", kr:"여교황",          num:"II",  color:"#023e8a", accent:"#4361ee", symbol:"☽",  bg:"#03045e"},
+  {id:3, name:"The Empress",        kr:"여황제",          num:"III", color:"#6d4c41", accent:"#e07a5f", symbol:"♀",  bg:"#1a0e09"},
+  {id:4, name:"The Emperor",        kr:"황제",            num:"IV",  color:"#7b2d00", accent:"#d62828", symbol:"♂",  bg:"#1a0800"},
+  {id:5, name:"The Hierophant",     kr:"교황",            num:"V",   color:"#5c4d00", accent:"#d4a017", symbol:"☩",  bg:"#18140a"},
+  {id:6, name:"The Lovers",         kr:"연인",            num:"VI",  color:"#8b1a4a", accent:"#ff758f", symbol:"♡",  bg:"#1a0512"},
+  {id:7, name:"The Chariot",        kr:"전차",            num:"VII", color:"#1b4332", accent:"#40916c", symbol:"⚔",  bg:"#081c15"},
+  {id:8, name:"Strength",           kr:"힘",              num:"VIII",color:"#7b3f00", accent:"#f4a261", symbol:"♾",  bg:"#1a0d00"},
+  {id:9, name:"The Hermit",         kr:"은둔자",          num:"IX",  color:"#2d3561", accent:"#7b8cde", symbol:"🕯", bg:"#090c1a"},
+  {id:10,name:"Wheel of Fortune",   kr:"운명의 수레바퀴", num:"X",   color:"#5c2d91", accent:"#9d4edd", symbol:"☸",  bg:"#120520"},
+  {id:11,name:"Justice",            kr:"정의",            num:"XI",  color:"#006d77", accent:"#2ec4b6", symbol:"⚖",  bg:"#00191c"},
+  {id:12,name:"The Hanged Man",     kr:"매달린 사람",     num:"XII", color:"#3a5a40", accent:"#a3b18a", symbol:"⊕",  bg:"#0a140c"},
+  {id:13,name:"Death",              kr:"죽음",            num:"XIII",color:"#1a1a2e", accent:"#533483", symbol:"☠",  bg:"#0a0a14"},
+  {id:14,name:"Temperance",         kr:"절제",            num:"XIV", color:"#0077b6", accent:"#48cae4", symbol:"△▽", bg:"#001e3c"},
+  {id:15,name:"The Devil",          kr:"악마",            num:"XV",  color:"#4a0404", accent:"#c62828", symbol:"⛤",  bg:"#100101"},
+  {id:16,name:"The Tower",          kr:"탑",              num:"XVI", color:"#212529", accent:"#e9c46a", symbol:"⚡",  bg:"#0d0d0d"},
+  {id:17,name:"The Star",           kr:"별",              num:"XVII",color:"#1b4f72", accent:"#aed9e0", symbol:"✦",  bg:"#061622"},
+  {id:18,name:"The Moon",           kr:"달",              num:"XVIII",color:"#3d1d5e",accent:"#c77dff", symbol:"☾",  bg:"#0f0519"},
+  {id:19,name:"The Sun",            kr:"태양",            num:"XIX", color:"#7a4f00", accent:"#ffd166", symbol:"☀",  bg:"#1e1300"},
+  {id:20,name:"Judgement",          kr:"심판",            num:"XX",  color:"#1a3a4a", accent:"#90e0ef", symbol:"☬",  bg:"#060f14"},
+  {id:21,name:"The World",          kr:"세계",            num:"XXI", color:"#4a3728", accent:"#d4a574", symbol:"◎",  bg:"#120d09"},
+  // ── 마이너 아르카나: 완드 (22–35) ──
+  ...minorCards('wands',     22),
+  // ── 마이너 아르카나: 컵   (36–49) ──
+  ...minorCards('cups',      36),
+  // ── 마이너 아르카나: 소드 (50–63) ──
+  ...minorCards('swords',    50),
+  // ── 마이너 아르카나: 펜타클 (64–77) ──
+  ...minorCards('pentacles', 64),
+];
+
+const POSITIONS = ["과거","현재","미래"];
+
+// ── 해석 의미 데이터 ──
+// 메이저 아르카나
+const MAJOR_M = {
+  0:  {up:"새로운 여정의 시작, 순수한 가능성과 자유로운 도전",        rev:"무모한 결정, 준비 없는 시작, 중요한 것을 놓침"},
+  1:  {up:"의지와 집중력으로 원하는 것을 현실화하는 능력",            rev:"재능을 낭비, 자기 의심, 교활함 혹은 속임수"},
+  2:  {up:"직관과 무의식의 지혜, 아직 드러나지 않은 숨겨진 진실",    rev:"억눌린 직관, 표면에만 집중, 감춰진 비밀"},
+  3:  {up:"풍요, 창조, 모성적 돌봄, 자연과 감각적 즐거움",          rev:"창조적 막힘, 의존성, 감정적 불안정"},
+  4:  {up:"구조, 안정, 권위, 목표를 향한 실행력",                   rev:"경직된 통제, 융통성 부족, 권력 남용"},
+  5:  {up:"전통, 관습, 영적 가르침, 집단의 지혜",                   rev:"교조주의, 개인의 자유 억압, 변화 거부"},
+  6:  {up:"사랑, 조화, 가치관의 정렬, 중요한 선택의 순간",          rev:"불균형한 관계, 잘못된 가치관, 내적 갈등"},
+  7:  {up:"의지와 통제로 장애물 극복, 승리를 향한 전진",            rev:"방향 상실, 공격성, 자기 통제력 약화"},
+  8:  {up:"내면의 힘과 인내, 두려움을 연민으로 극복",                rev:"자기 의심, 약함, 내면의 갈등에 굴복"},
+  9:  {up:"고독한 성찰, 내면의 빛으로 길을 찾는 지혜",              rev:"고립, 외로움, 내성에서 도피"},
+  10: {up:"운명의 전환점, 순환과 변화, 새로운 기회의 도래",          rev:"불운, 변화 저항, 악순환의 반복"},
+  11: {up:"공정함, 균형, 인과응보, 진실의 드러남",                  rev:"불공정, 편견, 책임 회피"},
+  12: {up:"자발적 희생으로 얻는 새로운 시각, 전환과 기다림",         rev:"순교 집착, 의미 없는 희생, 변화 거부"},
+  13: {up:"끝과 새로운 시작, 변화와 전환, 낡은 것의 소멸",          rev:"변화에 대한 두려움, 정체, 불완전한 끝"},
+  14: {up:"균형과 조화, 절제와 인내, 통합과 치유",                  rev:"불균형, 과잉, 극단적 행동"},
+  15: {up:"욕망과 집착, 물질에 묶인 상태, 자신을 제한하는 패턴",     rev:"해방, 자각, 억압에서 벗어남"},
+  16: {up:"갑작스러운 변화와 붕괴, 거짓된 구조의 해체, 깨달음",     rev:"재앙 회피, 변화 지연, 내면의 혼돈"},
+  17: {up:"희망, 영감, 치유, 어둠 후의 밝은 가능성",                rev:"절망, 불신, 목표 상실"},
+  18: {up:"무의식과 직관, 불분명함, 환상과 두려움",                  rev:"혼란 극복, 억압된 두려움 드러남"},
+  19: {up:"기쁨, 성공, 활력, 긍정적 에너지와 자신감",               rev:"일시적 좌절, 과도한 낙관, 과대평가"},
+  20: {up:"각성, 재탄생, 과거 정산, 새로운 단계로의 부름",          rev:"자기 비판, 기회 외면, 정체"},
+  21: {up:"완성, 성취, 통합, 새로운 사이클의 시작",                 rev:"미완성, 지연, 닫힌 순환"},
+};
+// 마이너 아르카나 — 수트별 숫자(1–14) 공통 의미 테이블
+const MINOR_M = {
+  wands: [
+    {up:"열정적인 시작, 새로운 아이디어의 불꽃",                     rev:"지연, 창의력 막힘, 출발 두려움"},
+    {up:"계획과 미래를 향한 비전, 확장 준비",                        rev:"안주, 계획 부재, 기회 놓침"},
+    {up:"첫 성과와 팀워크, 창의적 협력",                             rev:"실망, 성과 인정 못 받음"},
+    {up:"안정과 축하, 공동체의 기쁨",                                rev:"불안정, 조화 부족, 뿌리 없음"},
+    {up:"갈등과 경쟁, 의견 충돌",                                    rev:"내적 갈등, 충돌 회피, 긴장 고조"},
+    {up:"공개적 인정과 승리, 리더십 발휘",                           rev:"자기 의심, 인정받지 못함"},
+    {up:"도전에 맞서는 용기, 포기하지 않는 의지",                    rev:"방어적 태도, 과도한 부담"},
+    {up:"빠른 행동과 변화, 바쁜 일정",                               rev:"분산된 집중력, 서두름"},
+    {up:"마지막 장애물, 인내로 극복",                                rev:"번아웃, 한계 도달"},
+    {up:"여행, 변화, 새로운 출발 준비",                              rev:"혼란, 지연, 준비 부족"},
+    {up:"열정적 탐구, 새로운 기술 습득",                             rev:"에너지 낭비, 무모한 도전"},
+    {up:"모험, 자유로운 행동, 영감 추구",                            rev:"경솔함, 충동, 방향 없는 움직임"},
+    {up:"창의력과 독립심, 비전 있는 리더",                           rev:"통제욕, 충동적 결정"},
+    {up:"카리스마, 창의적 리더십, 대담함",                           rev:"독단, 오만, 관용 부족"},
+  ],
+  cups: [
+    {up:"감정의 새로운 시작, 직관적 기회",                           rev:"감정 차단, 기회 외면"},
+    {up:"사랑과 파트너십, 연결과 조화",                              rev:"불균형, 소통 단절"},
+    {up:"기쁨, 우정, 축하, 감사",                                    rev:"방종, 과잉, 삼각관계"},
+    {up:"명상과 성찰, 내면의 탐구",                                  rev:"무기력, 회피, 현실 직시 거부"},
+    {up:"상실과 슬픔, 아직 남은 가능성",                             rev:"슬픔 극복, 앞으로 나아감"},
+    {up:"향수, 어린 시절의 기억, 순수함",                            rev:"과거 집착, 미성숙"},
+    {up:"환상과 선택, 꿈과 현실의 경계",                             rev:"환상 깨짐, 현실적 선택"},
+    {up:"실망, 더 나은 것을 향한 탐색",                              rev:"포기, 두려움으로 인한 정체"},
+    {up:"소원 성취, 감정적 풍요로움",                                rev:"꿈과 현실의 불일치, 집착"},
+    {up:"감정적 완성, 가족의 행복",                                  rev:"불화, 내면의 공허함"},
+    {up:"감수성, 직관, 창의적 메시지",                               rev:"감정 미성숙, 망상"},
+    {up:"낭만, 감성적 탐구, 감정 흐름",                              rev:"사기, 감정 조작"},
+    {up:"공감, 직관, 감정적 지혜",                                   rev:"감정 과잉, 의존"},
+    {up:"감성적 깊이, 평온, 감정의 성숙",                            rev:"감정 억압, 냉담"},
+  ],
+  swords: [
+    {up:"명확한 생각, 진실 직면, 새로운 시작",                       rev:"혼란, 나쁜 소식, 명확성 부족"},
+    {up:"균형, 교착 상태, 결정 보류",                                rev:"긴장 해소, 결정 회피"},
+    {up:"슬픔, 상처, 배신의 아픔",                                   rev:"회복, 용서, 상처 치유"},
+    {up:"휴식, 회복, 전략적 후퇴",                                   rev:"의무 회피, 과도한 고립"},
+    {up:"갈등, 패배, 비윤리적 승리",                                 rev:"화해, 갈등 후 재건"},
+    {up:"이별, 전환, 더 나은 곳으로 이동",                           rev:"강요된 변화, 혼란"},
+    {up:"기만, 전략적 행동, 도피",                                   rev:"배신 발각, 무책임"},
+    {up:"제한, 갇힌 느낌, 자기 제약",                                rev:"해방, 제약에서 벗어남"},
+    {up:"고통, 두려움, 최악의 생각",                                 rev:"희망, 내면의 회복"},
+    {up:"비극, 끝, 고통스러운 마무리",                               rev:"저항, 불가피한 것 거부"},
+    {up:"예리한 관찰, 직접적 소통",                                  rev:"잔인한 말, 사이버 갈등"},
+    {up:"빠른 사고, 결단력, 지적 도전",                              rev:"경솔, 충동, 비판"},
+    {up:"독립, 명확한 판단, 지적 리더십",                            rev:"냉정, 독단, 감정 무시"},
+    {up:"권위, 지적 힘, 공정한 판단",                                rev:"독재, 냉혹한 통제"},
+  ],
+  pentacles: [
+    {up:"새로운 물질적 기회, 재정적 시작",                           rev:"기회 놓침, 물질주의"},
+    {up:"균형 잡힌 재정, 신중한 관리",                               rev:"재정 불균형, 낭비"},
+    {up:"기술 숙달, 협력으로 얻는 성과",                             rev:"팀워크 부재, 가치 평가 못 받음"},
+    {up:"안정과 재정 보수, 소유에 집착",                             rev:"탐욕, 인색함, 집착"},
+    {up:"물질적 어려움, 재정적 걱정",                                rev:"회복, 위기 탈출"},
+    {up:"관대함, 나눔, 커뮤니티 지원",                               rev:"인색, 자기중심적 행동"},
+    {up:"인내로 이루는 성장, 장기 투자",                             rev:"조급함, 성급한 결정"},
+    {up:"스킬 개발, 지속적 노력",                                    rev:"완벽주의, 진전 없음"},
+    {up:"안정과 번영, 현명한 관리",                                  rev:"과잉 통제, 물질 집착"},
+    {up:"물질적 풍요, 가족의 안정",                                  rev:"재정 손실, 가족 갈등"},
+    {up:"실용적 학습, 새로운 기술 탐구",                             rev:"미성숙, 낭비적 행동"},
+    {up:"성실, 근면, 안정적 발전",                                   rev:"게으름, 무책임"},
+    {up:"풍요, 관대함, 안정된 살림",                                 rev:"과잉 보호, 물질주의"},
+    {up:"물질적 성공, 실용적 지도력",                                rev:"탐욕, 완고함, 부패"},
+  ],
+};
+
+function getMeaning(card) {
+  if (card.id <= 21) return MAJOR_M[card.id];
+  // 마이너: suit + 숫자 인덱스(0=에이스…13=킹)
+  const suitMap = {wands:22, cups:36, swords:50, pentacles:64};
+  const idx = card.id - suitMap[card.suit]; // 0–13
+  return MINOR_M[card.suit][idx];
+}
+
+// 하위 호환 래퍼
+const MEANINGS = new Proxy({}, { get: (_,k) => MAJOR_M[k] });
+
+// ══════════════════════════════════════════════════
+// SVG 카드 생성 — 그라디언트 + 카드별 맞춤 이모지
+// ══════════════════════════════════════════════════
+
+// 카드별 이모지 맵 (메이저 아르카나)
+const MAJOR_EMOJI = {
+  0: '🤪',  // 바보 — 자유/모험/새출발
+  1: '🪄',  // 마법사 — 마법 지팡이
+  2: '🌙',  // 여교황 — 달/신비/직관
+  3: '🌾',  // 여황제 — 풍요/대지/생명력
+  4: '👑',  // 황제 — 왕관/권위
+  5: '🔑',  // 교황 — 열쇠/가르침/전통
+  6: '💘',  // 연인 — 화살 꽂힌 하트/사랑
+  7: '🏇',  // 전차 — 질주/전진/승리
+  8: '🦁',  // 힘 — 사자
+  9: '🏮',  // 은둔자 — 등불/내면의 빛
+  10:'🎡',  // 운명의 수레바퀴 — 바퀴
+  11:'⚖️',  // 정의 — 저울
+  12:'🙃',  // 매달린 사람 — 거꾸로
+  13:'💀',  // 죽음 — 해골/변화/전환
+  14:'🏺',  // 절제 — 항아리/물 붓기/균형
+  15:'😈',  // 악마 — 악마
+  16:'🗼',  // 탑 — 탑/붕괴
+  17:'⭐',  // 별 — 희망의 별
+  18:'🌕',  // 달 — 보름달
+  19:'☀️',  // 태양 — 태양
+  20:'📯',  // 심판 — 나팔
+  21:'🌍',  // 세계 — 지구/완성
+};
+
+// 마이너 아르카나 — 수트별 카드별 이모지
+// 순서: 에이스, 2, 3, 4, 5, 6, 7, 8, 9, 10, 페이지, 나이트, 퀸, 킹
+const MINOR_EMOJI = {
+  // 완드: 불/열정/행동/창의 — 지팡이 계열
+  wands: [
+    '🦯', // 에이스 — 완드/지팡이
+    '🦯', // 2      — 의지/도전
+    '🦯', // 3      — 성장/협력
+    '🦯', // 4      — 축하/안정
+    '🦯', // 5      — 갈등/경쟁
+    '🦯', // 6      — 승리/인정
+    '🦯', // 7      — 방어/용기
+    '🦯', // 8      — 빠른 행동
+    '🦯', // 9      — 인내/끈기
+    '🦯', // 10     — 무거운 짐/목표
+    '📜', // 페이지 — 열정적 메신저
+    '🐎', // 나이트 — 달리는 말
+    '👸', // 퀸     — 여왕
+    '🤴', // 킹     — 왕
+  ],
+  // 컵: 물/감정/관계/직관 — 성배 계열
+  cups: [
+    '🏆', // 에이스 — 황금 성배
+    '💞', // 2      — 사랑/파트너십
+    '🎊', // 3      — 기쁨/우정/축제
+    '🧘', // 4      — 명상/성찰
+    '😔', // 5      — 슬픔/상실
+    '🕊️', // 6      — 평화/향수/순수
+    '🌠', // 7      — 환상/꿈/선택
+    '🚶', // 8      — 떠남/탐색
+    '✨', // 9      — 소원 성취/풍요
+    '🏡', // 10     — 가족/행복/완성
+    '🧒', // 페이지 — 감성적 아이
+    '🦄', // 나이트 — 낭만/이상주의
+    '👸', // 퀸     — 여왕
+    '🤴', // 킹     — 왕
+  ],
+  // 소드: 공기/생각/갈등/진실 — 검/칼 계열
+  swords: [
+    '🗡️', // 에이스 — 날카로운 검/진실
+    '🗡️', // 2      — 교차된 검/교착
+    '🗡️', // 3      — 심장 찌르는 검/슬픔
+    '🗡️', // 4      — 검과 휴식
+    '🗡️', // 5      — 패배/갈등
+    '⛵', // 6      — 이별/전환/항해
+    '🗡️', // 7      — 훔치는 검/기만
+    '⛓️', // 8      — 속박/제약
+    '🗡️', // 9      — 악몽/두려움
+    '🗡️', // 10     — 최후의 검/끝
+    '🧐', // 페이지 — 예리한 관찰자
+    '🐎', // 나이트 — 달리는 말
+    '👸', // 퀸     — 여왕
+    '🤴', // 킹     — 왕
+  ],
+  // 펜타클: 땅/물질/재물/안정 — 오각별 동전 계열
+  pentacles: [
+    '⭐', // 에이스 — 오각별 동전/새로운 기회
+    '💰', // 2      — 균형 잡힌 재정
+    '🥇', // 3      — 기술/협력/성과
+    '💎', // 4      — 보석/소유/안정
+    '🥶', // 5      — 결핍/어려움
+    '🎁', // 6      — 관대함/나눔
+    '🌾', // 7      — 수확/인내
+    '🔨', // 8      — 장인/노력/숙련
+    '🏡', // 9      — 번영/안정
+    '🏰', // 10     — 풍요/유산
+    '📚', // 페이지 — 학습/실용적 탐구
+    '🐎', // 나이트 — 달리는 말
+    '👸', // 퀸     — 여왕
+    '👑', // 킹     — 왕관 (물질적 성공)
+  ],
+};
+
+function makeCardSVG(card, w=68, h=112, reversed=false) {
+  const r = 7;
+  const cx = w/2, cy = h/2;
+  const rotate = reversed ? `transform="rotate(180,${cx},${cy})"` : "";
+
+  // 이모지 결정
+  let emoji;
+  if (card.id <= 21) {
+    emoji = MAJOR_EMOJI[card.id];
+  } else {
+    const suitMap = {wands:22, cups:36, swords:50, pentacles:64};
+    const idx = card.id - suitMap[card.suit]; // 0~13
+    emoji = MINOR_EMOJI[card.suit][idx];
+  }
+
+  // 카드 표시명 (수트 카드는 "킹 of 완드" → "킹" + 하단 수트명)
+  const topName = card.kr.includes(' of ') ? card.kr.split(' of ')[0] : card.kr;
+  const suitLabel = card.suit
+    ? `<text x="${cx}" y="${h*0.84}" text-anchor="middle" font-family="Georgia,serif" font-size="${w*0.095}" fill="${card.accent}" opacity="0.6">${SUIT[card.suit].suit}</text>`
+    : '';
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="g${card.id}w${w}" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="${card.color}" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="${card.bg}"/>
+    </radialGradient>
+    <clipPath id="cp${card.id}w${w}"><rect width="${w}" height="${h}" rx="${r}"/></clipPath>
+  </defs>
+  <g clip-path="url(#cp${card.id}w${w})" ${rotate}>
+    <rect width="${w}" height="${h}" fill="${card.bg}"/>
+    <rect width="${w}" height="${h}" fill="url(#g${card.id}w${w})"/>
+    <rect x="4" y="4" width="${w-8}" height="${h-8}" rx="${r-2}" fill="none" stroke="${card.accent}" stroke-width="0.7" opacity="0.45"/>
+    <rect x="6" y="6" width="${w-12}" height="${h-12}" rx="${r-3}" fill="none" stroke="${card.accent}" stroke-width="0.35" opacity="0.25"/>
+    <text x="${cx}" y="${h*0.2}" text-anchor="middle" font-family="Georgia,serif" font-size="${w*0.16}" fill="${card.accent}" opacity="0.9">${card.num}</text>
+    <text x="${cx}" y="${h*0.57}" text-anchor="middle" font-size="${w*0.32}" dominant-baseline="middle">${emoji}</text>
+    <text x="${cx}" y="${h*0.72}" text-anchor="middle" font-family="Georgia,serif" font-size="${w*0.105}" fill="${card.accent}" opacity="0.8">${topName}</text>
+    ${suitLabel}
+  </g>
+</svg>`;
+}
+
+function makeBackSVG(w=68, h=112) {
+  const r=7, cx=w/2, cy=h/2;
+  const lines = [];
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2;
+    const x1=cx+Math.cos(a)*8, y1=cy+Math.sin(a)*8;
+    const x2=cx+Math.cos(a)*(w*0.36), y2=cy+Math.sin(a)*(w*0.36);
+    lines.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(201,169,110,0.2)" stroke-width="0.5"/>`);
+  }
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+  <defs><clipPath id="cpb"><rect width="${w}" height="${h}" rx="${r}"/></clipPath></defs>
+  <g clip-path="url(#cpb)">
+    <rect width="${w}" height="${h}" fill="#1a1130"/>
+    <rect x="4" y="4" width="${w-8}" height="${h-8}" rx="${r-2}" fill="none" stroke="rgba(201,169,110,0.25)" stroke-width="0.6"/>
+    ${lines.join('')}
+    <circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="rgba(201,169,110,0.35)" stroke-width="0.7"/>
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" font-family="serif" font-size="8" fill="rgba(201,169,110,0.3)">✦</text>
+  </g>
+</svg>`;
+}
+
+// ══════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════
+let shuffled = false;
+let deckOrder = [];
+let slots = [null,null,null];
+
+// ══════════════════════════════════════════════════
+// Shuffle & render deck
+// ══════════════════════════════════════════════════
+function doShuffle() {
+  slots = [null,null,null];
+  [0,1,2].forEach(i => clearSlot(i, false));
+
+  let arr = [...DECK];
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  deckOrder = arr.map(c => ({...c, reversed: Math.random()<0.35}));
+  shuffled = true;
+
+  renderDeck();
+  document.getElementById('result-wrap').classList.remove('on');
+  document.getElementById('read-btn').disabled = true;
+  document.getElementById('shuffle-btn').disabled = false;
+}
+
+// ══════════════════════════════════════════════════
+// Drag and Drop — iOS Safari 완전 호환
+// ══════════════════════════════════════════════════
+const ghost = document.getElementById('drag-ghost');
+let dragCard = null;
+let dragStarted = false;
+let touchStartX = 0, touchStartY = 0;
+let scrollLocked = false;   // 스크롤 잠금 여부
+const DRAG_THRESHOLD = 8;
+
+function attachDrag(el, card) {
+  // ── Mouse ──
+  el.addEventListener('mousedown', e => {
+    if(el.classList.contains('used') || !shuffled) return;
+    e.preventDefault();
+    beginDrag(card, e.clientX, e.clientY);
+  });
+
+  // ── Touch: passive:false 로 등록 → touchstart에서 preventDefault 가능 ──
+  el.addEventListener('touchstart', e => {
+    if(el.classList.contains('used') || !shuffled) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    dragCard = card;
+    dragStarted = false;
+    scrollLocked = false;
+    // passive:false지만 여기선 preventDefault 안 함 → 가로 스크롤 우선 허용
+  }, {passive: false});
+}
+
+function beginDrag(card, cx, cy) {
+  dragCard = card;
+  dragStarted = true;
+  scrollLocked = true;
+  ghost.innerHTML = makeBackSVG(68, 112);
+  ghost.style.display = 'block';
+  moveGhost(cx, cy);
+  const el = document.getElementById('mini-'+card.id);
+  if(el) el.classList.add('dragging');
+}
+
+function moveGhost(cx, cy) {
+  ghost.style.left = cx + 'px';
+  ghost.style.top  = cy + 'px';
+  highlightSlotAt(cx, cy);
+}
+
+function highlightSlotAt(cx, cy) {
+  document.querySelectorAll('.drop-slot').forEach(s => {
+    const r = s.getBoundingClientRect();
+    s.classList.toggle('drag-over',
+      cx>=r.left && cx<=r.right && cy>=r.top && cy<=r.bottom);
+  });
+}
+
+function endDrag(cx, cy) {
+  scrollLocked = false;
+  if(!dragCard || !dragStarted) {
+    dragCard = null; dragStarted = false;
+    return;
+  }
+  ghost.style.display = 'none';
+  document.querySelectorAll('.drop-slot').forEach(s => s.classList.remove('drag-over'));
+  const el = document.getElementById('mini-'+dragCard.id);
+  if(el) el.classList.remove('dragging');
+
+  let hit = null;
+  document.querySelectorAll('.drop-slot').forEach(s => {
+    const r = s.getBoundingClientRect();
+    if(cx>=r.left && cx<=r.right && cy>=r.top && cy<=r.bottom) hit = s;
+  });
+  if(hit) {
+    const idx = parseInt(hit.dataset.slot);
+    if(slots[idx] === null) placeCard(idx, dragCard);
+  }
+  dragCard = null;
+  dragStarted = false;
+}
+
+// ── 전역 Mouse 이벤트 ──
+document.addEventListener('mousemove', e => {
+  if(dragCard && dragStarted) moveGhost(e.clientX, e.clientY);
+});
+document.addEventListener('mouseup', e => {
+  if(dragCard) endDrag(e.clientX, e.clientY);
+});
+
+// ── 전역 Touch 이벤트 ──
+document.addEventListener('touchmove', e => {
+  if(!dragCard) return;
+  const t = e.touches[0];
+  const dx = Math.abs(t.clientX - touchStartX);
+  const dy = Math.abs(t.clientY - touchStartY);
+
+  if(!dragStarted) {
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if(dist < DRAG_THRESHOLD) return; // 아직 threshold 미만
+
+    if(dx > dy * 1.5) {
+      // 수평 스와이프 → 가로 스크롤로 처리, 드래그 취소
+      dragCard = null;
+      return;
+    }
+    // 수직/대각 스와이프 → 드래그 시작
+    beginDrag(dragCard, t.clientX, t.clientY);
+  }
+
+  e.preventDefault();  // 드래그 중 스크롤 완전 차단
+  moveGhost(t.clientX, t.clientY);
+}, {passive: false});
+
+document.addEventListener('touchend', e => {
+  if(!dragCard) return;
+  const t = e.changedTouches[0];
+  endDrag(t.clientX, t.clientY);
+});
+
+document.addEventListener('touchcancel', () => {
+  if(!dragCard) return;
+  scrollLocked = false;
+  ghost.style.display = 'none';
+  document.querySelectorAll('.drop-slot').forEach(s => s.classList.remove('drag-over'));
+  const el = document.getElementById('mini-'+dragCard.id);
+  if(el) el.classList.remove('dragging');
+  dragCard = null; dragStarted = false;
+});
+
+// ══════════════════════════════════════════════════
+// Place / Remove card
+// ══════════════════════════════════════════════════
+function placeCard(slotIdx, card) {
+  slots[slotIdx] = card;
+
+  const slotEl = document.getElementById('slot-'+slotIdx);
+  slotEl.classList.remove('drag-over');
+  slotEl.classList.add('filled');
+
+  const inner = document.createElement('div');
+  inner.className = 'slot-inner' + (card.reversed ? ' reversed' : '');
+  inner.innerHTML = makeCardSVG(card, 110, 185, card.reversed) +
+    (card.reversed ? '<div class="rev-badge">역방향</div>' : '');
+
+  const rmBtn = document.createElement('button');
+  rmBtn.className = 'remove-btn';
+  rmBtn.innerHTML = '✕';
+  rmBtn.title = '카드 제거';
+  rmBtn.onclick = () => removeCard(slotIdx, card);
+
+  slotEl.innerHTML = '';
+  slotEl.appendChild(inner);
+  slotEl.appendChild(rmBtn);
+
+  // mark mini card as used
+  document.getElementById('mini-'+card.id).classList.add('used');
+
+  checkAllSlots();
+}
+
+function clearSlot(slotIdx, restoreMini=true) {
+  const old = slots[slotIdx];
+  slots[slotIdx] = null;
+
+  const slotEl = document.getElementById('slot-'+slotIdx);
+  slotEl.classList.remove('filled','drag-over');
+  slotEl.innerHTML = '<div class="slot-hint">카드를<br>여기로</div>';
+
+  if(restoreMini && old) {
+    const mini = document.getElementById('mini-'+old.id);
+    if(mini) mini.classList.remove('used');
+  }
+  checkAllSlots();
+}
+
+function removeCard(slotIdx, card) {
+  clearSlot(slotIdx, true);
+}
+
+function checkAllSlots() {
+  const filled = slots.filter(s=>s!==null).length;
+  document.getElementById('read-btn').disabled = (filled < 3);
+  document.getElementById('shuffle-btn').disabled = (filled > 0);
+}
+
+// ══════════════════════════════════════════════════
+// Reading
+// ══════════════════════════════════════════════════
+async function doReading() {
+  const question = document.getElementById('question').value.trim();
+  const apiKey   = savedApiKey;
+  const rw = document.getElementById('result-modal-bg');
+  const rc = document.getElementById('result-content');
+
+  openResultModal();
+  rc.innerHTML = '<div class="loading">✦ 카드가 속삭이는 메시지를 읽고 있습니다...</div>';
+
+  // ── 날짜/시간 (결과 보기 누른 시각) ──
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dtStr = `${now.getFullYear()}년 ${pad(now.getMonth()+1)}월 ${pad(now.getDate())}일 ${pad(now.getHours())}시 ${pad(now.getMinutes())}분`;
+  document.getElementById('result-datetime').textContent = dtStr;
+
+  // ── 질문 표시 ──
+  document.getElementById('result-question').textContent = question ? `"${question}"` : '';
+
+  // ── 카드 이미지 3장 ──
+  const cardsRow = document.getElementById('result-cards-row');
+  cardsRow.innerHTML = slots.map((c, i) => {
+    const rev = c.reversed;
+    const svgHTML = makeCardSVG(c, 90, 148, rev);
+    return `
+      <div class="result-card-item">
+        <div class="rc-label">${POSITIONS[i]}</div>
+        <div class="rc-svg-wrap${rev ? ' reversed' : ''}">
+          <div class="rc-svg">${svgHTML}</div>
+          ${rev ? '<div class="rc-rev-badge">역방향</div>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  // ── Worker API 호출 ──
+  const WORKER_URL = 'https://tarot-signal-api.ydkoolab.workers.dev';
+
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        cards: slots.map(c => ({ kr: c.kr, name: c.name, reversed: c.reversed }))
+      })
+    });
+
+    if(!res.ok) throw new Error(`서버 오류 ${res.status}`);
+
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    if(!data.text) throw new Error('응답이 비어있습니다');
+
+    rc.innerHTML = `<div class="result-text">${data.text}</div>`;
+  } catch(e) {
+    // Worker 실패 시 내장 로직으로 fallback
+    rc.innerHTML = `<div class="result-text">${builtinReading(question)}</div>`;
+  }
+  // 모달이므로 scrollIntoView 불필요
+}
+
+function buildPrompt(q) {
+  const cardDesc = slots.map((c,i) => {
+    const m = getMeaning(c);
+    const meaning = c.reversed ? m.rev : m.up;
+    return `${POSITIONS[i]}: ${c.kr} (${c.reversed ? '역방향' : '정방향'}) — ${meaning}`;
+  }).join('\n');
+
+  if(q) {
+    return `타로 마스터로서 질문자의 질문에 직접 답해주세요.
+
+질문: "${q}"
+
+뽑힌 카드:
+${cardDesc}
+
+위 카드들을 종합하여 "${q}"에 대한 답을 직접적으로 해주세요.
+카드 설명을 나열하지 말고, 질문에 대한 답변 형식으로 자연스럽게 이야기해주세요.
+예를 들어 "오늘의 운세는?"이라면 오늘 어떤 일이 일어날지, 무엇을 주의해야 할지, 어떤 기회가 있는지 구체적으로 말해주세요.
+따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
+  } else {
+    return `타로 마스터로서 오늘 이 사람에게 필요한 메시지를 전해주세요.
+
+뽑힌 카드:
+${cardDesc}
+
+카드들이 전하는 오늘의 전반적인 에너지와 조언을 구체적이고 생생하게 이야기해주세요.
+따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// 내장 해석 로직 — 카드 조합 기반 풍부한 해석
+// ══════════════════════════════════════════════════
+function builtinReading(q) {
+  const [past, now, future] = slots;
+  const pM = getMeaning(past),  pTxt = past.reversed   ? pM.rev : pM.up;
+  const nM = getMeaning(now),   nTxt = now.reversed    ? nM.rev : nM.up;
+  const fM = getMeaning(future),fTxt = future.reversed ? fM.rev : fM.up;
+  const pR = past.reversed   ? ' (역방향)' : '';
+  const nR = now.reversed    ? ' (역방향)' : '';
+  const fR = future.reversed ? ' (역방향)' : '';
+
+  // 에너지 톤 계산
+  const revCount   = [past,now,future].filter(c=>c.reversed).length;
+  const DARK_IDS   = new Set([12,13,15,16]);
+  const BRIGHT_IDS = new Set([3,6,17,19,21]);
+  const GROWTH_IDS = new Set([0,1,7,8,10,14,20]);
+  const nowDark    = DARK_IDS.has(now.id)   && !now.reversed;
+  const nowBright  = BRIGHT_IDS.has(now.id) && !now.reversed;
+  const nowGrowth  = GROWTH_IDS.has(now.id) && !now.reversed;
+  let tone;
+  if      (revCount >= 2 || nowDark)               tone = 'caution';
+  else if (revCount === 0 && nowBright)             tone = 'very_positive';
+  else if (revCount === 0 && (nowGrowth || true))   tone = 'positive';
+  else                                              tone = 'neutral';
+
+  // 특수 카드 조합
+  const ids = [past.id, now.id, future.id];
+  const DARK_IDS2   = new Set([12,13,15,16]);
+  const BRIGHT_IDS2 = new Set([3,6,17,19,21]);
+  const allBright = ids.every(id => BRIGHT_IDS2.has(id));
+  const allDark   = ids.every(id => DARK_IDS2.has(id));
+  const majorOnly = ids.every(id => id <= 21);
+
+  function specialMsg() {
+    if(allBright && revCount===0) return '세 장 모두 밝은 에너지의 카드입니다. 지금 이 시기는 매우 좋은 흐름 속에 있어요.';
+    if(allDark) return '세 장 모두 강렬한 변화의 카드입니다. 힘든 시간이지만, 이 과정을 통해 깊은 성장이 이루어질 거예요.';
+    if(ids.includes(19)&&!future.reversed) return '태양 카드의 밝은 기운이 전체 흐름을 환하게 비추고 있습니다.';
+    if(ids.includes(21)&&!future.reversed) return '세계 카드가 미래에 있습니다. 지금의 여정이 아름다운 완성으로 이어질 것임을 암시해요.';
+    if(ids.includes(17)&&!future.reversed) return '별 카드가 희망의 빛을 보내고 있습니다. 어떤 어려움 뒤에도 반드시 빛이 찾아올 거예요.';
+    if(ids.includes(16)&&!now.reversed) return '탑 카드가 있어요. 갑작스러운 변화가 예고되지만, 무너지는 것은 더 좋은 것을 위한 자리를 만드는 과정입니다.';
+    if(ids.includes(13)&&!future.reversed) return '죽음 카드는 끝이 아닌 변화와 전환을 의미해요. 낡은 것이 물러나고 새로운 국면이 펼쳐질 것입니다.';
+    if(ids.includes(18)) return '달 카드가 있어요. 아직 드러나지 않은 것들이 있으니 모든 것이 명확해질 때까지 성급한 판단은 피하세요.';
+    if(ids.includes(0)&&revCount===0) return '바보 카드의 순수한 에너지가 새로운 출발을 응원하고 있습니다.';
+    if(majorOnly) return '세 장 모두 메이저 아르카나입니다. 지금 이 상황은 삶에서 중요한 의미를 지닌 시기임을 나타내요.';
+    return '';
+  }
+
+  const adviceMap = {
+    very_positive: '지금은 자신을 믿고 적극적으로 나아가기에 최적의 시기입니다. 망설임 없이 행동해 보세요.',
+    positive:      '전반적으로 긍정적인 흐름입니다. 현재의 에너지를 잘 활용하면 좋은 결과를 만들 수 있어요.',
+    neutral:       '신중하게 판단하고 균형을 유지하는 것이 중요한 시기입니다. 서두르지 말고 차분하게 나아가세요.',
+    caution:       '지금은 무리하게 밀어붙이기보다 내면을 돌아보고 에너지를 비축하는 시간이 필요합니다.',
+  };
+
+  const flowDesc = `과거의 ${past.kr}${pR} 카드는 ${pTxt}의 흐름을 보여줍니다. 현재는 ${now.kr}${nR} 카드의 기운, 즉 ${nTxt}의 에너지가 강하게 작용하고 있어요. 앞으로는 ${future.kr}${fR} 카드가 예고하는 ${fTxt}의 방향으로 흘러갈 것입니다.`;
+  const special  = specialMsg();
+  const advice   = adviceMap[tone];
+  const sp       = special ? '\n\n' + special : '';
+
+  const ql = (q||'').replace(/\s/g,'');
+  const isLuck     = /운세|오늘운|전체운|종합운|이번주|이번달|올해|요즘/.test(ql);
+  const isLove     = /연애|사랑|애인|남친|여친|남자친구|여자친구|결혼|짝사랑|썸|고백|이별|헤어|재회|관계|좋아하/.test(ql);
+  const isWork     = /직장|취업|업무|커리어|사업|창업|이직|승진|면접|직업|일자리|수입|월급/.test(ql);
+  const isStudy    = /공부|학업|시험|수능|입시|성적|합격|자격증|학교|진학|학습|과외|수험/.test(ql);
+  const isHealth   = /건강|몸|피로|운동|병|컨디션|다이어트|체력|수면|스트레스/.test(ql);
+  const isDecision = /할까|할지|어떻게|해야|선택|결정|고민|망설|갈등|어느쪽|뭘해야/.test(ql);
+  const isRelation = /친구|가족|부모|형제|자매|동료|상사|인간관계|갈등|화해|싸움/.test(ql);
+  const isMoney    = /돈|재테크|투자|주식|부동산|빚|대출|재정|경제/.test(ql);
+  const isFuture   = /미래|앞으로|내년|장래|전망|희망|꿈|목표/.test(ql);
+
+  const openers = (map) => map[tone] || map['positive'];
+
+  if(!q) {
+    const o = openers({
+      very_positive:'지금 이 순간, 세 장의 카드가 밝은 에너지로 가득 차 있습니다.',
+      positive:     '카드들이 오늘 당신에게 전하는 메시지를 읽었습니다.',
+      neutral:      '세 장의 카드가 지금 이 시기에 대해 이야기합니다.',
+      caution:      '카드들이 지금 잠시 멈추고 돌아볼 시간이 필요하다고 말하고 있습니다.',
+    });
+    return `${o}\n\n${flowDesc}${sp}\n\n${advice}`;
+  }
+  if(isLuck) {
+    const o = openers({
+      very_positive:'오늘의 운세는 매우 밝습니다! 카드들이 강한 긍정 에너지를 발산하고 있어요.',
+      positive:     '전반적으로 좋은 기운이 흐르는 날입니다.',
+      neutral:      '평온하고 무난한 흐름의 하루가 될 것 같습니다.',
+      caution:      '오늘은 조금 조심스러운 에너지가 흐르고 있어요. 무리하지 않는 것이 좋겠습니다.',
+    });
+    return `${o}\n\n${flowDesc}${sp}\n\n${advice}`;
+  }
+  if(isLove) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 매우 따뜻한 신호를 보내고 있습니다.`,
+      positive:     `"${q}"에 대해 카드들이 긍정적인 흐름을 보여주고 있어요.`,
+      neutral:      `"${q}"에 대해 카드들은 신중하고 천천히 접근하라고 조언합니다.`,
+      caution:      `"${q}"에 대해 카드들이 지금은 조심스러운 시기임을 알려주고 있습니다.`,
+    });
+    const d = openers({
+      very_positive:'감정의 흐름이 자연스럽고 상대방과의 연결이 깊어질 수 있는 시기예요. 마음을 솔직하게 표현해 보세요.',
+      positive:     '관계에서 따뜻한 에너지가 흐르고 있습니다. 작은 관심과 표현이 큰 변화를 만들 수 있어요.',
+      neutral:      '지금은 감정을 서두르기보다 상대를 더 깊이 이해하는 시간이 필요합니다. 자연스러운 흐름에 맡겨두세요.',
+      caution:      '감정적인 결정보다 이성적인 판단이 필요한 시기예요. 소통에 신경 쓰고, 자신의 마음을 먼저 돌아보세요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isStudy) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 매우 밝은 학업 에너지를 보여줍니다.`,
+      positive:     `"${q}"에 대해 카드들이 꾸준한 성장을 예고하고 있어요.`,
+      neutral:      `"${q}"에 대해 카드들은 기초를 탄탄히 다지는 시기라고 말합니다.`,
+      caution:      `"${q}"에 대해 카드들이 지금은 컨디션 관리가 먼저라고 말하고 있어요.`,
+    });
+    const d = openers({
+      very_positive:'집중력과 이해력이 높아지는 시기입니다. 지금 페이스를 유지하면 좋은 결과가 따라올 거예요.',
+      positive:     '꾸준히 쌓아온 노력이 힘을 발휘하기 시작하는 시기입니다. 포기하지 말고 계속 나아가세요.',
+      neutral:      '화려한 성과보다 꾸준한 복습과 기본기가 중요한 시기예요. 자신의 속도를 믿으세요.',
+      caution:      '무리한 공부보다 충분한 휴식과 회복이 먼저입니다. 지쳐있을 때 억지로 밀어붙이면 역효과가 날 수 있어요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isWork) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 강한 성장의 기운을 보여주고 있어요.`,
+      positive:     `"${q}"에 대해 카드들이 안정적인 발전의 흐름을 암시합니다.`,
+      neutral:      `"${q}"에 대해 카드들은 내실을 다지는 시기라고 말하고 있어요.`,
+      caution:      `"${q}"에 대해 카드들이 신중한 접근을 권하고 있습니다.`,
+    });
+    const d = openers({
+      very_positive:'지금은 준비해온 것들을 과감하게 펼칠 수 있는 좋은 시기입니다. 기회가 왔을 때 적극적으로 움직여 보세요.',
+      positive:     '꾸준한 노력이 서서히 결실을 맺어가고 있습니다. 주변의 기회를 놓치지 않도록 눈을 크게 뜨고 살펴보세요.',
+      neutral:      '겉으로 드러나는 성과보다 내실을 다지는 것이 중요한 시기입니다. 조급해하지 말고 한 걸음씩 나아가세요.',
+      caution:      '충동적인 결정이나 큰 변화보다는 현재 상황을 냉정하게 분석하고 리스크를 줄이는 방향으로 움직이세요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isHealth) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 활기찬 에너지를 보여주고 있어요.`,
+      positive:     `"${q}"에 대해 카드들이 안정적인 건강 흐름을 암시합니다.`,
+      neutral:      `"${q}"에 대해 카드들은 몸의 신호에 귀 기울이라고 조언해요.`,
+      caution:      `"${q}"에 대해 카드들이 몸과 마음의 휴식이 필요하다고 말합니다.`,
+    });
+    const d = openers({
+      very_positive:'몸과 마음이 좋은 균형을 이루고 있는 시기입니다. 지금의 건강한 습관을 유지해 나가세요.',
+      positive:     '전반적인 컨디션이 안정적입니다. 규칙적인 생활과 적당한 운동으로 활력을 더해보세요.',
+      neutral:      '몸이 보내는 작은 신호들을 무시하지 마세요. 충분한 수면과 영양 섭취가 중요한 시기입니다.',
+      caution:      '지금은 무리하지 않는 것이 최우선입니다. 충분히 쉬고 스트레스를 줄이는 것이 가장 좋은 건강 관리예요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isRelation) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 따뜻하고 긍정적인 관계 에너지를 보여줍니다.`,
+      positive:     `"${q}"에 대해 카드들이 관계에서 좋은 흐름이 있음을 암시해요.`,
+      neutral:      `"${q}"에 대해 카드들은 서로를 이해하는 시간이 필요하다고 말합니다.`,
+      caution:      `"${q}"에 대해 카드들이 관계에서 신중함이 필요한 시기임을 알려줍니다.`,
+    });
+    const d = openers({
+      very_positive:'지금은 관계에서 진심이 잘 전달되는 시기입니다. 먼저 다가가면 좋은 반응이 올 수 있어요.',
+      positive:     '관계의 흐름이 자연스럽게 나아지고 있습니다. 작은 배려와 경청이 관계를 더 단단하게 만들어줄 거예요.',
+      neutral:      '서로의 입장을 충분히 이해하려는 노력이 필요한 시기입니다. 판단보다 경청이 먼저예요.',
+      caution:      '지금은 감정적으로 대응하기보다 한 발 물러서서 상황을 바라보는 것이 현명합니다.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isMoney) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 재물 운이 상승하는 흐름을 보여줍니다.`,
+      positive:     `"${q}"에 대해 카드들이 안정적인 재정 흐름을 암시해요.`,
+      neutral:      `"${q}"에 대해 카드들은 신중한 재정 관리가 필요하다고 말합니다.`,
+      caution:      `"${q}"에 대해 카드들이 지금은 큰 재정 결정을 피하라고 조언해요.`,
+    });
+    const d = openers({
+      very_positive:'재물의 흐름이 좋아지는 시기입니다. 준비된 투자나 계획이 있다면 실행해 볼 만한 때예요.',
+      positive:     '꾸준한 노력이 재정적 안정으로 이어지고 있습니다. 작은 것부터 차근차근 쌓아나가세요.',
+      neutral:      '수입과 지출의 균형을 맞추는 것이 중요한 시기입니다. 충동적인 소비보다 계획적인 지출을 권해요.',
+      caution:      '지금은 큰 투자나 지출보다 현재의 재정을 지키는 것이 우선입니다. 리스크가 큰 결정은 미루는 것이 좋아요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  if(isFuture) {
+    const o = openers({
+      very_positive:`"${q}"에 대해 카드들이 밝고 희망찬 미래를 보여주고 있습니다.`,
+      positive:     `"${q}"에 대해 카드들이 긍정적인 가능성을 암시하고 있어요.`,
+      neutral:      `"${q}"에 대해 카드들은 지금의 선택이 미래를 만든다고 말합니다.`,
+      caution:      `"${q}"에 대해 카드들이 지금 이 시기가 중요한 전환점임을 알려줍니다.`,
+    });
+    return `${o}\n\n${flowDesc}${sp}\n\n${advice}`;
+  }
+  if(isDecision) {
+    const o = openers({
+      very_positive:`"${q}" — 카드들은 지금 바로 행동해도 좋다는 강한 신호를 보내고 있습니다.`,
+      positive:     `"${q}" — 카드들이 조심스럽지만 긍정적인 방향을 가리키고 있어요.`,
+      neutral:      `"${q}" — 카드들은 좀 더 살펴보고 결정하라고 조언합니다.`,
+      caution:      `"${q}" — 카드들이 지금 당장의 결정보다 기다림을 권하고 있습니다.`,
+    });
+    const d = openers({
+      very_positive:'직관을 믿고 결단을 내려도 좋은 시기입니다. 지금까지의 경험을 믿고 움직여 보세요.',
+      positive:     '장단점을 한 번 더 정리한 뒤 결정하세요. 크게 틀리지 않는 방향으로 가고 있어요.',
+      neutral:      '좀 더 정보를 모으고 주변의 의견도 들어보세요. 서두르지 않아도 늦지 않습니다.',
+      caution:      '지금은 결정을 미루는 것도 하나의 선택입니다. 상황이 좀 더 명확해질 때까지 기다려보세요.',
+    });
+    return `${o}\n\n${flowDesc}\n\n${d}${sp}\n\n${advice}`;
+  }
+  // 기타
+  const o = openers({
+    very_positive:`"${q}"에 대해 카드들이 매우 긍정적인 신호를 보내고 있습니다.`,
+    positive:     `"${q}"에 대해 카드들이 좋은 흐름을 보여주고 있어요.`,
+    neutral:      `"${q}"에 대해 카드들이 신중하게 접근하라고 말하고 있습니다.`,
+    caution:      `"${q}"에 대해 카드들이 지금은 내면을 돌아볼 시간이 필요하다고 말합니다.`,
+  });
+  return `${o}\n\n${flowDesc}${sp}\n\n${advice}`;
+}
+
+// ══════════════════════════════════════════════════
+// Reset
+// ══════════════════════════════════════════════════
+function doReset() {
+  // 결과 모달 닫기
+  document.getElementById('result-modal-bg').classList.remove('on');
+  document.body.style.overflow = '';
+
+  slots = [null,null,null];
+  [0,1,2].forEach(i => clearSlot(i, false));
+  document.getElementById('result-wrap').classList.remove('on');
+  document.getElementById('question').value = '';
+  deckOrder.forEach(card => {
+    const mini = document.getElementById('mini-'+card.id);
+    if(mini) mini.classList.remove('used');
+  });
+  document.getElementById('read-btn').disabled = true;
+  document.getElementById('shuffle-btn').disabled = false;
+  // 섞기 전 힌트 상태로 복원
+  shuffled = false;
+  deckOrder = [];
+  drawHintFan();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ══════════════════════════════════════════════════
+// Save image
+// ══════════════════════════════════════════════════
+async function doSave() {
+  const btn = document.querySelector('.save-wrap .btn');
+  const origText = btn ? btn.textContent : '';
+  if(btn) { btn.textContent = '저장 중...'; btn.disabled = true; }
+
+  try {
+    if(typeof html2canvas === 'undefined') throw new Error('html2canvas 미로드');
+
+    const source = document.getElementById('result-box');
+
+    // 캡처용 래퍼 — 여백 + 배경 추가
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+      position:fixed; left:-9999px; top:0;
+      background:#0d0a1a;
+      padding:32px 28px;
+      width:${Math.min(source.offsetWidth + 56, 600)}px;
+      box-sizing:border-box;
+      border-radius:16px;
+      font-family:'Lora',Georgia,serif;
+    `;
+    const clone = source.cloneNode(true);
+    // 타이틀 가운데 정렬 강제
+    const title = clone.querySelector('.result-title');
+    if(title) title.style.cssText += ';text-align:center;width:100%;display:block;';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    const canvas = await html2canvas(wrapper, {
+      backgroundColor: '#0d0a1a',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+    document.body.removeChild(wrapper);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const date = new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g, '-').replace(/-$/, '');
+    const filename = `타로리딩_${date}.png`;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if(isIOS) {
+      const w = window.open('', '_blank');
+      if(w) {
+        // 순수 img 태그만 — 텍스트 없이 이미지만 표시해야 길게 눌러 사진 저장 가능
+        w.document.write(`<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#0d0a1a;display:flex;align-items:flex-start;justify-content:center}
+  img{width:100%;max-width:600px;display:block;-webkit-user-select:none;user-select:none}
+  .tip{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:rgba(201,169,110,.15);border:1px solid rgba(201,169,110,.4);
+    color:#c9a96e;font-family:sans-serif;font-size:13px;
+    padding:10px 18px;border-radius:20px;white-space:nowrap;pointer-events:none}
+</style>
+</head>
+<body>
+<img src="${dataUrl}" alt="타로리딩" draggable="false"/>
+<div class="tip">이미지를 길게 눌러 사진 저장</div>
+</body></html>`);
+        w.document.close();
+      } else {
+        showImageOverlay(dataUrl, filename);
+      }
+    } else {
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = dataUrl;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch(e) {
+    alert('이미지 저장에 실패했습니다.\n' + e.message);
+  } finally {
+    if(btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+// iOS 팝업 차단 시 오버레이로 이미지 보여주기
+function showImageOverlay(dataUrl, filename) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px;gap:14px;
+  `;
+  overlay.innerHTML = `
+    <p style="color:#c9a96e;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.1em;text-align:center">
+      이미지를 길게 눌러 저장하세요
+    </p>
+    <img src="${dataUrl}" style="max-width:100%;max-height:75vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.8)"/>
+    <button onclick="this.parentNode.remove()" style="
+      font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;
+      padding:.55rem 1.4rem;border-radius:30px;border:1px solid rgba(201,169,110,.5);
+      background:transparent;color:#c9a96e;cursor:pointer;margin-top:4px;
+    ">✕ 닫기</button>
+  `;
+  document.body.appendChild(overlay);
+}
+
+let savedApiKey = '';
+
+function openApiModal() {
+  document.getElementById('api-key-input').value = savedApiKey;
+  updateApiStatus();
+  document.getElementById('api-modal-bg').style.display = 'flex';
+  setTimeout(() => document.getElementById('api-key-input').focus(), 100);
+}
+
+function closeApiModal(e) {
+  // 배경 클릭 시 닫기 (모달 내부 클릭은 무시)
+  if(e && e.target !== document.getElementById('api-modal-bg')) return;
+  document.getElementById('api-modal-bg').style.display = 'none';
+}
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  savedApiKey = val;
+  const dot = document.getElementById('api-dot');
+  const status = document.getElementById('api-status');
+  if(val) {
+    dot.classList.add('active');
+    status.className = 'ok';
+    status.textContent = '✓ API Key가 저장되었습니다';
+    setTimeout(() => {
+      document.getElementById('api-modal-bg').style.display = 'none';
+    }, 800);
+  } else {
+    dot.classList.remove('active');
+    status.className = '';
+    status.textContent = '내장 해석 로직이 사용됩니다';
+    setTimeout(() => {
+      document.getElementById('api-modal-bg').style.display = 'none';
+    }, 800);
+  }
+}
+
+function updateApiStatus() {
+  const status = document.getElementById('api-status');
+  if(savedApiKey) {
+    status.className = 'ok';
+    status.textContent = '✓ API Key가 설정되어 있습니다';
+  } else {
+    status.className = '';
+    status.textContent = '미설정 — 내장 해석 로직 사용 중';
+  }
+}
+
+function openResultModal() {
+  document.getElementById('result-modal-bg').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeResultModal(e) {
+  if(e && e.target !== document.getElementById('result-modal-bg')) return;
+  document.getElementById('result-modal-bg').classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+// ESC 키로 결과 모달 닫기
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') {
+    document.getElementById('api-modal-bg').style.display = 'none';
+    document.getElementById('result-modal-bg').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+});
+// ══════════════════════════════════════════════════
+// Shuffle
+// ══════════════════════════════════════════════════
+function doShuffle() {
+  slots = [null, null, null];
+  [0, 1, 2].forEach(i => clearSlot(i, false));
+
+  let arr = [...DECK];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  deckOrder = arr.map(c => ({ ...c, reversed: Math.random() < 0.35 }));
+  shuffled = true;
+
+  renderDeck();
+  document.getElementById('result-modal-bg').classList.remove('on');
+  document.body.style.overflow = '';
+  document.getElementById('read-btn').disabled = true;
+  document.getElementById('shuffle-btn').disabled = false;
+}
+
+function renderDeck() {
+  const row = document.getElementById('deck-row');
+  row.innerHTML = '';
+
+  const CW = 72, CH = 118;
+  const OVERLAP = 36; // 겹침 px (margin-right: -OVERLAP)
+
+  deckOrder.forEach((card, i) => {
+    const div = document.createElement('div');
+    div.className = 'mini-card';
+    div.id = 'mini-' + card.id;
+    div.dataset.id = card.id;
+
+    // 카드마다 약간 랜덤 기울기
+    const rot = (Math.random() * 4 - 2).toFixed(2);
+    div.style.transform = `rotate(${rot}deg)`;
+    div.style.marginRight = `-${OVERLAP}px`;
+    div.style.zIndex = i;
+
+    div.innerHTML = makeBackSVG(CW, CH);
+    attachDrag(div, card);
+    row.appendChild(div);
+  });
+
+  // 마지막 카드 margin 제거
+  const last = row.lastElementChild;
+  if(last) last.style.marginRight = '0';
+
+  // 스크롤 중앙으로
+  const wrap = document.getElementById('deck-scroll-wrap');
+  setTimeout(() => {
+    wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+  }, 50);
+}
+
+// 힌트용 더미 카드 (섞기 전)
+function drawHintFan() {
+  const row = document.getElementById('deck-row');
+  row.innerHTML = '';
+
+  const N = 78; // 실제 덱과 동일한 수
+  const CW = 72, CH = 118, OVERLAP = 36;
+
+  for(let i = 0; i < N; i++){
+    const div = document.createElement('div');
+    div.className = 'mini-card hint';
+    const rot = (Math.random() * 3 - 1.5).toFixed(2);
+    div.style.transform = `rotate(${rot}deg)`;
+    div.style.marginRight = `-${OVERLAP}px`;
+    div.style.zIndex = i;
+    div.innerHTML = makeBackSVG(CW, CH);
+    row.appendChild(div);
+  }
+  const last = row.lastElementChild;
+  if(last) last.style.marginRight = '0';
+
+  // 중앙 스크롤
+  const wrap = document.getElementById('deck-scroll-wrap');
+  setTimeout(() => {
+    wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+  }, 50);
+}
+
+// 스크롤 영역 마우스 드래그 (빈 공간 클릭-드래그로 좌우 스크롤)
+(function initScrollDrag(){
+  const wrap = document.getElementById('deck-scroll-wrap');
+  let isScrollDragging = false, startX = 0, scrollLeft = 0;
+
+  wrap.addEventListener('mousedown', e => {
+    if(e.target.closest('.mini-card')) return; // 카드 위는 카드 드래그로
+    isScrollDragging = true;
+    startX = e.pageX - wrap.offsetLeft;
+    scrollLeft = wrap.scrollLeft;
+  });
+  window.addEventListener('mouseup', () => { isScrollDragging = false; });
+  wrap.addEventListener('mousemove', e => {
+    if(!isScrollDragging) return;
+    e.preventDefault();
+    wrap.scrollLeft = scrollLeft - (e.pageX - wrap.offsetLeft - startX);
+  });
+})();
+
+drawHintFan();
+</script>
+</body>
+</html>
