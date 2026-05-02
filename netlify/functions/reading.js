@@ -1,6 +1,5 @@
 exports.handler = async function(event) {
 
-  // CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -8,7 +7,6 @@ exports.handler = async function(event) {
     'Content-Type': 'application/json',
   };
 
-  // Preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
@@ -18,6 +16,11 @@ exports.handler = async function(event) {
   }
 
   try {
+    // 키 확인 로그
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    console.log('API KEY exists:', !!apiKey);
+    console.log('API KEY prefix:', apiKey ? apiKey.substring(0, 20) + '...' : 'MISSING');
+
     const { question, cards } = JSON.parse(event.body);
 
     const POSITIONS = ['과거', '현재', '미래'];
@@ -29,11 +32,13 @@ exports.handler = async function(event) {
       ? `질문: "${question}"\n\n뽑힌 카드:\n${cardDesc}\n\n위 카드들을 종합하여 "${question}"에 대한 답을 직접적으로 해주세요. 카드 설명을 나열하지 말고, 질문에 대한 답변 형식으로 자연스럽게 이야기해주세요. 따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`
       : `뽑힌 카드:\n${cardDesc}\n\n카드들이 전하는 오늘의 전반적인 에너지와 조언을 구체적이고 생생하게 이야기해주세요. 따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
 
+    console.log('Calling Anthropic API...');
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -49,8 +54,11 @@ exports.handler = async function(event) {
       }),
     });
 
+    console.log('Anthropic response status:', response.status);
+
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
+      console.log('Anthropic error:', JSON.stringify(err));
       throw new Error(err?.error?.message || `API 오류 ${response.status}`);
     }
 
@@ -64,6 +72,7 @@ exports.handler = async function(event) {
     };
 
   } catch (e) {
+    console.log('ERROR:', e.message);
     return {
       statusCode: 500,
       headers,
