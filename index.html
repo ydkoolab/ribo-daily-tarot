@@ -1631,15 +1631,12 @@ function checkAllSlots() {
 // Reading
 // ══════════════════════════════════════════════════
 async function doReading() {
+  // ── 값을 먼저 다 읽고 (showView 전에! step1이 숨겨지기 전)
   const question = document.getElementById('question').value.trim();
-
-  // ── 대상 읽기 ──
   const subjectRadio = document.querySelector('input[name="subject"]:checked');
   const subjectVal   = subjectRadio ? subjectRadio.value : 'self';
   const subjectDetail = document.getElementById('subject-detail').value.trim();
   const subject = subjectVal === 'other' && subjectDetail ? subjectDetail : (subjectVal === 'self' ? '본인' : '타인');
-
-  // ── 현재 스프레드 포지션 ──
   const spread    = SPREADS[currentSpread];
   const positions = spread.positions;
 
