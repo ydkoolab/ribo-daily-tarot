@@ -1513,10 +1513,12 @@ async function doReading() {
     const data = await res.json();
     if(data.error) throw new Error(data.error);
 
-    const text = data.text || '';
+    const text    = data.text    || '';
+    const summary = data.summary || '';
     if(!text) throw new Error('응답이 비어있습니다');
 
-    rc.innerHTML = `<div class="result-text">${text}</div>`;
+    const summaryHTML = summary ? `<div class="result-summary">✦ ${summary}</div>` : '';
+    rc.innerHTML = summaryHTML + `<div class="result-text">${text}</div>`;
 
   } catch(e) {
     console.error('API 오류:', e);
