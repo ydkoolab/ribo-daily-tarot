@@ -1,5 +1,4 @@
 exports.handler = async function(event) {
-
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -10,29 +9,81 @@ exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
-
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
   try {
-    // 키 확인 로그
     const apiKey = process.env.ANTHROPIC_API_KEY;
     console.log('API KEY exists:', !!apiKey);
     console.log('API KEY prefix:', apiKey ? apiKey.substring(0, 20) + '...' : 'MISSING');
 
-    const { question, cards } = JSON.parse(event.body);
+    const { question, subject, spread, positions, cards } = JSON.parse(event.body);
 
-    const POSITIONS = ['과거', '현재', '미래'];
-    const cardDesc = cards.map((c, i) =>
-      `${POSITIONS[i]}: ${c.kr} (${c.reversed ? '역방향' : '정방향'})`
-    ).join('\n');
+    // ── 카드 설명 (position 포함) ──
+    const cardDesc = cards.map((c, i) => {
+      const pos = c.position || (positions && positions[i]) || `카드 ${i + 1}`;
+      return `${pos}: ${c.kr} (${c.reversed ? '역방향' : '정방향'})`;
+    }).join('\n');
 
+    // ── 대상 문구 ──
+    const subjectNote = subject && subject !== '본인'
+      ? `\n해석 대상: ${subject}에 관한 상황입니다.`
+      : '';
+
+    // ── 스프레드별 해석 가이드 ──
+    const spreadGuideMap = {
+      one:    '한 장의 카드가 전하는 핵심 메시지를 중심으로 답변하세요.',
+      three:  '과거·현재·미래의 흐름을 자연스럽게 연결하여 이야기해주세요.',
+      choice: 'A안과 B안 각각의 현재 상황과 결과를 비교하고, 어떤 선택이 더 나은지 명확하게 말해주세요.',
+      celtic: '10장의 카드가 각 위치에서 전하는 의미를 종합하여 깊이 있게 해석해주세요.',
+    };
+    const spreadGuide = spreadGuideMap[spread] || '카드들의 흐름을 종합하여 답변하세요.';
+
+    // ── 시스템 프롬프트 ──
+    const spreadLabelMap = {
+      one:    '원 카드',
+      three:  '3카드 (과거·현재·미래)',
+      choice: '양자택일',
+      celtic: '켈틱 크로스',
+    };
+    const spreadLabel = spreadLabelMap[spread] || spread || '타로';
+
+    const systemPrompt = `당신은 수십 년의 경험을 가진 타로 마스터입니다.
+웨이트-라이더 타로 전통에 따라 카드를 해석하며, 역방향 카드는 해당 카드의 에너지가 막히거나 내면으로 향한다는 의미입니다.
+카드의 조합과 흐름을 읽어 질문에 대한 구체적이고 통찰력 있는 해석을 제공하세요.
+반드시 질문의 맥락에 맞게 답하세요.
+한국어로 따뜻하고 진지하게, 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
+
+    // ── 유저 프롬프트 ──
     const prompt = question
-      ? `질문: "${question}"\n\n뽑힌 카드:\n${cardDesc}\n\n위 카드들을 종합하여 "${question}"에 대한 답을 직접적으로 해주세요. 카드 설명을 나열하지 말고, 질문에 대한 답변 형식으로 자연스럽게 이야기해주세요. 따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`
-      : `뽑힌 카드:\n${cardDesc}\n\n카드들이 전하는 오늘의 전반적인 에너지와 조언을 구체적이고 생생하게 이야기해주세요. 따뜻하고 생동감 있게, 400자 내외로 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
+      ? `스프레드: ${spreadLabel}${subjectNote}
+질문: "${question}"
 
-    console.log('Calling Anthropic API...');
+뽑힌 카드:
+${cardDesc}
+
+${spreadGuide}
+카드 설명을 단순 나열하지 말고, 질문에 대한 답변 형식으로 자연스럽게 이야기해주세요.
+따뜻하고 생동감 있게 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.
+
+아래 형식을 반드시 지켜주세요:
+[요약] 전체 내용을 한 문장(30자 내외)으로 먼저 작성하세요.
+[본문] 400자 내외의 상세 해석을 작성하세요.`
+      : `스프레드: ${spreadLabel}${subjectNote}
+
+뽑힌 카드:
+${cardDesc}
+
+${spreadGuide}
+카드들이 전하는 전반적인 에너지와 조언을 구체적이고 생생하게 이야기해주세요.
+따뜻하고 생동감 있게 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.
+
+아래 형식을 반드시 지켜주세요:
+[요약] 전체 내용을 한 문장(30자 내외)으로 먼저 작성하세요.
+[본문] 400자 내외의 상세 해석을 작성하세요.`;
+
+    console.log('Calling Anthropic API... spread:', spread);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -43,13 +94,8 @@ exports.handler = async function(event) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        system: `당신은 수십 년의 경험을 가진 타로 마스터입니다.
-웨이트-라이더 타로 전통에 따라 카드를 해석하며, 과거-현재-미래의 3카드 스프레드를 사용합니다.
-역방향 카드는 해당 카드의 에너지가 막히거나 내면으로 향한다는 의미입니다.
-카드의 조합과 흐름을 읽어 질문에 대한 구체적이고 통찰력 있는 해석을 제공하세요.
-반드시 질문의 맥락에 맞게 답하세요.
-한국어로 따뜻하고 진지하게, 마크다운 없이 자연스러운 문장으로만 작성하세요.`,
+        max_tokens: 1024,
+        system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -63,12 +109,19 @@ exports.handler = async function(event) {
     }
 
     const data = await response.json();
-    const text = data.content?.[0]?.text;
+    const raw = data.content?.[0]?.text || '';
+
+    // ── [요약] / [본문] 파싱 ──
+    const summaryMatch = raw.match(/\[요약\]\s*([\s\S]*?)(?=\[본문\]|$)/);
+    const bodyMatch    = raw.match(/\[본문\]\s*([\s\S]*)/);
+
+    const summary = summaryMatch ? summaryMatch[1].trim() : '';
+    const text    = bodyMatch    ? bodyMatch[1].trim()    : raw.trim();
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ summary, text }),
     };
 
   } catch (e) {
