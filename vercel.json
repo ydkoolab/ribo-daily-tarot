@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "index_logo.html", "use": "@vercel/static" },
+    { "src": "api/reading.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/reading", "dest": "/api/reading.js" },
+    { "src": "/(.*)", "dest": "/index_logo.html" }
+  ]
+}
