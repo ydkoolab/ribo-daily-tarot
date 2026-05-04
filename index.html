@@ -1671,7 +1671,7 @@ async function doReading() {
         <g class="spiral-spark2"><circle cx="50" cy="10" r="2.5" fill="#c9a96e" opacity=".8"/></g>
         <circle class="spiral-dot" cx="50" cy="50" r="4.5"/>
       </svg>
-      <div class="tarot-loader-text">✦ 에너지를 분석하는 중입니다 ✦</div>
+      <div class="tarot-loader-text">✦ 에너지를 분석하는 중입니다 ✦<br><span style="font-size:.7rem;opacity:.6;font-family:'Lora',serif">처음 실행 시 최대 20초 소요될 수 있어요</span></div>
     </div>`;
 
   // ── 날짜/시간 ──
@@ -1711,7 +1711,7 @@ async function doReading() {
   const WORKER_URL = 'https://charming-gumdrop-02ead2.netlify.app/api/reading';
 
   try {
-    const res = await fetch(WORKER_URL, {
+    const fetchPromise = fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1727,6 +1727,12 @@ async function doReading() {
         })),
       })
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 20000)
+    );
+
+    const res = await Promise.race([fetchPromise, timeoutPromise]);
 
     if(!res.ok) throw new Error(`서버 오류 ${res.status}`);
     const data = await res.json();
