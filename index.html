@@ -1697,21 +1697,44 @@ async function doSave() {
 
     const source = document.getElementById('result-box');
 
-    // 캡처용 래퍼 — 여백 + 배경 추가
+    // 스프레드별 캡처 너비 계산 (카드가 wrap되지 않도록)
+    const cardCount = SPREADS[currentSpread].count;
+    const isGrid    = currentSpread === 'celtic'; // 5x2 그리드
+    let captureWidth;
+    if(isGrid) {
+      captureWidth = 600; // 5열 그리드는 넉넉하게
+    } else if(cardCount <= 1) {
+      captureWidth = 280;
+    } else if(cardCount <= 3) {
+      captureWidth = 480;
+    } else {
+      // 양자택일(4장) 등 — 카드당 약 110px + 여백
+      captureWidth = Math.min(cardCount * 120 + 80, 680);
+    }
+
+    // 캡처용 래퍼
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
       position:fixed; left:-9999px; top:0;
       background:#0d0a1a;
       padding:32px 28px;
-      width:${Math.min(source.offsetWidth + 56, 600)}px;
+      width:${captureWidth}px;
       box-sizing:border-box;
       border-radius:16px;
       font-family:'Lora',Georgia,serif;
     `;
     const clone = source.cloneNode(true);
+
     // 타이틀 가운데 정렬 강제
     const title = clone.querySelector('.result-title');
     if(title) title.style.cssText += ';text-align:center;width:100%;display:block;';
+
+    // 카드 행 flex-wrap 방지 (양자택일 등)
+    const clonedCardsRow = clone.querySelector('.result-cards-row');
+    if(clonedCardsRow && !clonedCardsRow.classList.contains('celtic-grid')) {
+      clonedCardsRow.style.cssText += ';flex-wrap:nowrap;';
+    }
+
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
