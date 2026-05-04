@@ -853,22 +853,7 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div><!-- /view-step3 -->
 
-<!-- Result Modal (legacy - hidden) -->
-<div id="result-modal-bg" style="display:none!important">
-<div id="result-modal-bg" onclick="closeResultModal(event)">
-  <div id="result-modal">
-    <div id="result-box">
-      <div class="result-title">✦ 타로 리딩 ✦</div>      <div class="result-datetime" id="result-datetime"></div>
-      <div class="result-question" id="result-question"></div>
-      <div class="result-cards-row" id="result-cards-row"></div>
-      <div id="result-content"></div>
-    </div>
-    <div class="save-wrap">
-      <button class="btn" onclick="doSave()">✦ 이미지로 저장</button>
-      <button class="btn btn-reset" onclick="doReset()">↺ 다시보기</button>
-    </div>
-  </div>
-</div><!-- /result-modal-bg -->
+
 
 <!-- Drag ghost — body 직계 자식으로 fixed 포지션 보장 -->
 </div><!-- /view-container -->
@@ -2004,8 +1989,6 @@ function builtinReading(q, subject, positions) {
 // Reset
 // ══════════════════════════════════════════════════
 function doReset() {
-  // 결과 모달 닫기 (legacy)
-  document.getElementById('result-modal-bg').classList.remove('on');
   document.body.style.overflow = '';
 
   // 카드/슬롯 초기화
