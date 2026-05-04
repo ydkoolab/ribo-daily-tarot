@@ -8,9 +8,19 @@
 <!-- Open Graph / 카카오톡 공유 미리보기 -->
 <meta property="og:type"        content="website"/>
 <meta property="og:title"       content="타로 시그널 (Tarot Signal)"/>
-<meta property="og:description" content="세 장의 카드가 당신의 길을 안내할 거예요."/>
+<meta property="og:description" content="타로카드로 확인하는 시그널"/>
 <meta property="og:site_name"   content="타로 시그널"/>
-<meta name="description"        content="세 장의 카드가 당신의 길을 안내할 거예요."/>
+<meta property="og:image"       content="https://charming-gumdrop-02ead2.netlify.app/tarot_signal_logo.jpeg"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="description"        content="타로카드로 확인하는 시그널"/>
+<!-- 카카오톡 -->
+<meta property="og:url"         content="https://charming-gumdrop-02ead2.netlify.app"/>
+<!-- 트위터 카드 -->
+<meta name="twitter:card"       content="summary_large_image"/>
+<meta name="twitter:title"      content="타로 시그널 (Tarot Signal)"/>
+<meta name="twitter:description" content="타로카드로 확인하는 시그널"/>
+<meta name="twitter:image"      content="https://charming-gumdrop-02ead2.netlify.app/tarot_signal_logo.jpeg"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -1760,26 +1770,8 @@ document.addEventListener('keydown', e => {
   }
 });
 // ══════════════════════════════════════════════════
-// Shuffle
+// Shuffle (→ doShuffle은 위에 정의됨)
 // ══════════════════════════════════════════════════
-function doShuffle() {
-  slots = [null, null, null];
-  [0, 1, 2].forEach(i => clearSlot(i, false));
-
-  let arr = [...DECK];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  deckOrder = arr.map(c => ({ ...c, reversed: Math.random() < 0.35 }));
-  shuffled = true;
-
-  renderDeck();
-  document.getElementById('result-modal-bg').classList.remove('on');
-  document.body.style.overflow = '';
-  document.getElementById('read-btn').disabled = true;
-  document.getElementById('shuffle-btn').disabled = false;
-}
 
 function renderDeck() {
   const row = document.getElementById('deck-row');
