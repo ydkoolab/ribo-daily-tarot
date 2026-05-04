@@ -60,7 +60,7 @@ textarea{resize:vertical;min-height:80px}
 .note{font-size:.68rem;color:#5a5248;margin-top:.45rem;font-style:italic}
 
 /* Controls */
-.ctrl{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.8rem}
+.ctrl{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-bottom:0}
 .btn{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
   padding:.6rem 1.5rem;border-radius:40px;border:1px solid rgba(201,169,110,.4);
   cursor:pointer;transition:all .3s;background:transparent;color:var(--gold)}
@@ -72,13 +72,15 @@ textarea{resize:vertical;min-height:80px}
 /* ── DECK SCROLL AREA ── */
 .spread-label{
   font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;
-  color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:.7rem
+  color:var(--muted);text-transform:uppercase;text-align:center;
+  margin-top:1.8rem;margin-bottom:.7rem
 }
 #deck-fan{
   position:relative;
   width:100%;
   height:168px;           /* hover lift(22px) + 카드(118px) + 여유(28px) */
   overflow:hidden;
+  margin-bottom:2.8rem;
 }
 #deck-scroll-wrap{
   position:absolute;
@@ -532,6 +534,49 @@ textarea{resize:vertical;min-height:80px}
   display:none;
 }
 #drag-ghost svg{width:100%;height:100%;border-radius:7px}
+
+/* ── 단계별 펼침 애니메이션 ── */
+@keyframes stepReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-panel {
+  display: none;
+  overflow: visible;
+}
+.step-panel.revealed {
+  display: block;
+  overflow: visible;
+  animation: stepReveal .55s cubic-bezier(.22,.68,0,1.2) both;
+}
+
+/* 카드 영역은 overflow:visible 필요 */
+.step-panel.step-card-area {
+  overflow: visible;
+}
+
+/* 스프레드 선택 후 활성화 강조 */
+.spread-selector .spread-btn.active {
+  position: relative;
+}
+.spread-selector .spread-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+}
 </style>
 </head>
 <body>
@@ -586,7 +631,7 @@ textarea{resize:vertical;min-height:80px}
 <!-- 스프레드 선택 -->
 <div class="spread-selector">
   <div class="spread-btn-row">
-    <button class="spread-btn active" data-spread="one" onclick="selectSpread('one')">
+    <button class="spread-btn" data-spread="one" onclick="selectSpread('one')">
       <span class="spread-icon">🃏</span>
       <span class="spread-name">원 카드</span>
       <span class="spread-desc">빠른 조언</span>
@@ -609,12 +654,16 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
-<!-- 질문 + 대상 입력 -->
+<!-- 질문 입력 (step 1) -->
+<div class="step-panel" id="step-question">
 <div class="panel">
   <div class="lbl">✦ 질문 또는 고민</div>
   <textarea id="question" placeholder="궁금한 것, 고민하는 것을 자유롭게 적어주세요..."></textarea>
 </div>
+</div>
 
+<!-- 대상 선택 (step 2) -->
+<div class="step-panel" id="step-subject">
 <div class="panel">
   <div class="lbl">✦ 대상</div>
   <div class="subject-row">
@@ -631,8 +680,12 @@ textarea{resize:vertical;min-height:80px}
   </div>
   <input type="text" id="subject-detail" class="subject-input" placeholder="예: 남자친구, 직장 동료..." style="display:none"/>
 </div>
+</div>
 
+<!-- 카드 선택 영역 (step 3) -->
+<div class="step-panel step-card-area" id="step-cards">
 <div class="ctrl">
+  <button class="btn btn-reset" id="reset-btn" onclick="doReset()">↺ 초기화</button>
   <button class="btn btn-p" id="shuffle-btn" onclick="doShuffle()">✦ 카드 섞기</button>
   <button class="btn" id="read-btn" onclick="doReading()" disabled>✦ 결과 보기</button>
 </div>
@@ -647,6 +700,7 @@ textarea{resize:vertical;min-height:80px}
 
 <!-- Drop slots (동적 생성) -->
 <div class="slots-area" id="slots-area"></div>
+</div>
 
 <!-- Drag ghost -->
 <div id="drag-ghost"></div>
@@ -654,7 +708,6 @@ textarea{resize:vertical;min-height:80px}
 <!-- Result Modal -->
 <div id="result-modal-bg" onclick="closeResultModal(event)">
   <div id="result-modal">
-    <button id="result-close-btn" onclick="closeResultModal()">✕</button>
     <div id="result-box">
       <div class="result-title">✦ 타로 리딩 ✦</div>      <div class="result-datetime" id="result-datetime"></div>
       <div class="result-question" id="result-question"></div>
@@ -1038,7 +1091,9 @@ const SPREADS = {
   },
 };
 
-let currentSpread = 'one';
+let currentSpread = null;
+let _subjectRevealed = false;
+let _cardsRevealed = false;
 
 function selectSpread(type) {
   currentSpread = type;
@@ -1075,6 +1130,12 @@ function selectSpread(type) {
     deckOrder = [];
     drawHintFan();
   }
+
+  // ── 단계 1: 질문 패널 열기 ──
+  revealStep('step-question');
+  // 스프레드 바꿀 때 대상/카드 패널 다시 열릴 수 있도록 플래그 리셋
+  _subjectRevealed = false;
+  _cardsRevealed = false;
 }
 
 function renderSlots(type) {
@@ -1119,6 +1180,32 @@ function onSubjectChange(el) {
   const input = document.getElementById('subject-detail');
   input.style.display = el.value === 'other' ? 'block' : 'none';
   if(el.value === 'other') input.focus();
+  // 대상 선택 시 카드 영역 열기
+  revealStep('step-cards');
+}
+
+// ══════════════════════════════════════════════════
+// 단계별 펼침
+// ══════════════════════════════════════════════════
+function revealStep(id) {
+  const el = document.getElementById(id);
+  if(!el || el.classList.contains('revealed')) return;
+  el.classList.add('revealed');
+  // 카드 영역 열릴 때 덱 자동 셔플
+  if(id === 'step-cards') {
+    let arr = [...DECK];
+    for(let i = arr.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    deckOrder = arr.map(c => ({...c, reversed: Math.random() < 0.35}));
+    shuffled = true;
+    renderDeck();
+  }
+  // 부드럽게 스크롤
+  setTimeout(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 180);
 }
 
 // ══════════════════════════════════════════════════
@@ -1167,14 +1254,14 @@ const DRAG_THRESHOLD = 8;
 function attachDrag(el, card) {
   // ── Mouse ──
   el.addEventListener('mousedown', e => {
-    if(el.classList.contains('used') || !shuffled) return;
+    if(el.classList.contains('used')) return;
     e.preventDefault();
     beginDrag(card, e.clientX, e.clientY);
   });
 
   // ── Touch: passive:false 로 등록 → touchstart에서 preventDefault 가능 ──
   el.addEventListener('touchstart', e => {
-    if(el.classList.contains('used') || !shuffled) return;
+    if(el.classList.contains('used')) return;
     const t = e.touches[0];
     touchStartX = t.clientX;
     touchStartY = t.clientY;
@@ -1297,15 +1384,8 @@ function placeCard(slotIdx, card) {
   inner.innerHTML = makeCardSVG(card, 110, 185, card.reversed) +
     (card.reversed ? '<div class="rev-badge">역방향</div>' : '');
 
-  const rmBtn = document.createElement('button');
-  rmBtn.className = 'remove-btn';
-  rmBtn.innerHTML = '✕';
-  rmBtn.title = '카드 제거';
-  rmBtn.onclick = () => removeCard(slotIdx, card);
-
   slotEl.innerHTML = '';
   slotEl.appendChild(inner);
-  slotEl.appendChild(rmBtn);
 
   // mark mini card as used
   document.getElementById('mini-'+card.id).classList.add('used');
@@ -1335,10 +1415,11 @@ function removeCard(slotIdx, card) {
 }
 
 function checkAllSlots() {
+  if(!currentSpread) return;
   const total = SPREADS[currentSpread].count;
   const filled = slots.filter(s=>s!==null).length;
   document.getElementById('read-btn').disabled = (filled < total);
-  document.getElementById('shuffle-btn').disabled = (filled > 0);
+  // 섞기 버튼은 항상 활성 (카드 선택 여부 무관)
 }
 
 // ══════════════════════════════════════════════════
@@ -1712,7 +1793,18 @@ function doReset() {
   document.getElementById('shuffle-btn').disabled = false;
   shuffled = false;
   deckOrder = [];
-  drawHintFan();
+
+  // ── 단계 패널 초기화 (숨김으로 되돌리기) ──
+  // step-cards가 다시 revealed될 때 revealStep에서 자동 셔플됨
+  ['step-question','step-subject','step-cards'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('revealed');
+  });
+
+  // 단계 플래그 초기화
+  _subjectRevealed = false;
+  _cardsRevealed = false;
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -2011,10 +2103,23 @@ function drawHintFan() {
   });
 })();
 
-drawHintFan();
+// 초기 슬롯 렌더링 — 스프레드 선택 후 진행하므로 스킵
+// renderSlots('one'); → selectSpread() 호출 시 처리됨
 
-// 초기 슬롯 렌더링
-renderSlots('one');
+// ── 질문 입력 시 대상 패널 열기 ──
+document.getElementById('question').addEventListener('input', function() {
+  if(!_subjectRevealed && this.value.trim().length > 0) {
+    _subjectRevealed = true;
+    revealStep('step-subject');
+    // 기본값 "나 자신" 이미 선택 상태 → 카드 영역도 딜레이 후 열기
+    if(!_cardsRevealed) {
+      setTimeout(() => {
+        _cardsRevealed = true;
+        revealStep('step-cards');
+      }, 420);
+    }
+  }
+});
 </script>
 </body>
 </html>
