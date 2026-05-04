@@ -1250,6 +1250,10 @@ function showView(viewId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ── step1에서 입력한 값 저장 (DOM 숨겨진 후에도 사용)
+let savedQuestion = '';
+let savedSubject = '본인';
+
 // step1 → step2 로 이동: 카드 선택 초기화 + 이동
 function goToStep2() {
   if(!currentSpread) return;
@@ -1261,6 +1265,10 @@ function goToStep2() {
   const subjectVal = subjectRadio ? subjectRadio.value : 'self';
   const subjectDetail = document.getElementById('subject-detail').value.trim();
   const subjectText = subjectVal === 'other' && subjectDetail ? subjectDetail : (subjectVal === 'self' ? '나 자신' : '타인');
+
+  // ── 여기서 저장 ──
+  savedQuestion = q;
+  savedSubject = subjectVal === 'other' && subjectDetail ? subjectDetail : (subjectVal === 'self' ? '본인' : '타인');
 
   const summaryEl = document.getElementById('step2-summary');
   summaryEl.innerHTML = `
@@ -1631,12 +1639,9 @@ function checkAllSlots() {
 // Reading
 // ══════════════════════════════════════════════════
 async function doReading() {
-  // ── 값을 먼저 다 읽고 (showView 전에! step1이 숨겨지기 전)
-  const question = document.getElementById('question').value.trim();
-  const subjectRadio = document.querySelector('input[name="subject"]:checked');
-  const subjectVal   = subjectRadio ? subjectRadio.value : 'self';
-  const subjectDetail = document.getElementById('subject-detail').value.trim();
-  const subject = subjectVal === 'other' && subjectDetail ? subjectDetail : (subjectVal === 'self' ? '본인' : '타인');
+  // ── 저장된 값 사용 (DOM에서 읽지 않음)
+  const question  = savedQuestion;
+  const subject   = savedSubject;
   const spread    = SPREADS[currentSpread];
   const positions = spread.positions;
 
@@ -1996,6 +2001,8 @@ function doReset() {
   }
 
   document.getElementById('question').value = '';
+  savedQuestion = '';
+  savedSubject = '본인';
 
   // 대상 초기화
   const selfRadio = document.querySelector('input[name="subject"][value="self"]');
