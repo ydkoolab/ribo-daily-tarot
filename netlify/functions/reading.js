@@ -26,10 +26,26 @@ exports.handler = async function(event) {
       return `${pos}: ${c.kr} (${c.reversed ? '역방향' : '정방향'})`;
     }).join('\n');
 
-    // ── 대상 문구 ──
-    const subjectNote = subject && subject !== '본인'
-      ? `\n해석 대상: ${subject}에 관한 상황입니다.`
-      : '';
+    // ── 대상 설정 ──
+    const isSelf = !subject || subject === '본인';
+    const subjectName = isSelf ? null : subject.trim();
+
+    // 호칭 처리: "김영삼" → "김영삼님", "친구" → "친구"처럼 이름이면 님 붙임
+    const isName = subjectName && /^[가-힣]{2,4}$/.test(subjectName);
+    const subjectHonor = subjectName
+      ? (isName ? `${subjectName}님` : subjectName)
+      : null;
+
+    // 대상 지칭어: 본인이면 "당신", 타인이면 "김영삼님" 또는 입력값
+    const personRef   = isSelf ? '당신' : subjectHonor;
+    // 소유격: "당신의" / "김영삼님의"
+    const personPoss  = `${personRef}의`;
+    // 주격 조사: "당신은" / "김영삼님은"
+    const personSubj  = `${personRef}은(는)`;
+
+    const subjectNote = isSelf
+      ? ''
+      : `\n해석 대상: ${subjectHonor}에 관한 상황입니다. 해석 전반에서 "${subjectHonor}"을 주어로 사용하고, "당신"이라는 표현은 절대 쓰지 마세요.`;
 
     // ── 스프레드별 해석 가이드 ──
     const spreadGuideMap = {
@@ -49,10 +65,17 @@ exports.handler = async function(event) {
     };
     const spreadLabel = spreadLabelMap[spread] || spread || '타로';
 
-    const systemPrompt = `당신은 수십 년의 경험을 가진 타로 마스터입니다.
+    const systemPrompt = isSelf
+      ? `당신은 수십 년의 경험을 가진 타로 마스터입니다.
 웨이트-라이더 타로 전통에 따라 카드를 해석하며, 역방향 카드는 해당 카드의 에너지가 막히거나 내면으로 향한다는 의미입니다.
 카드의 조합과 흐름을 읽어 질문에 대한 구체적이고 통찰력 있는 해석을 제공하세요.
-반드시 질문의 맥락에 맞게 답하세요.
+해석 대상은 질문자 본인이며, "당신"을 주어로 사용하세요.
+한국어로 따뜻하고 진지하게, 마크다운 없이 자연스러운 문장으로만 작성하세요.`
+      : `당신은 수십 년의 경험을 가진 타로 마스터입니다.
+웨이트-라이더 타로 전통에 따라 카드를 해석하며, 역방향 카드는 해당 카드의 에너지가 막히거나 내면으로 향한다는 의미입니다.
+카드의 조합과 흐름을 읽어 질문에 대한 구체적이고 통찰력 있는 해석을 제공하세요.
+해석 대상은 "${subjectHonor}"이며, 반드시 "${subjectHonor}"을 주어로 사용하세요.
+"당신", "당신은", "당신의" 같은 표현은 절대 사용하지 말고, 반드시 "${subjectHonor}은(는)", "${subjectHonor}의" 형태로 작성하세요.
 한국어로 따뜻하고 진지하게, 마크다운 없이 자연스러운 문장으로만 작성하세요.`;
 
     // ── 유저 프롬프트 ──
@@ -68,7 +91,7 @@ ${spreadGuide}
 따뜻하고 생동감 있게 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.
 
 아래 형식을 반드시 지켜주세요:
-[요약] 전체 내용을 한 문장(30자 내외)으로 먼저 작성하세요.
+[요약] ${personPoss} 상황을 한 문장(30자 내외)으로 먼저 작성하세요.
 [본문] 400자 내외의 상세 해석을 작성하세요.`
       : `스프레드: ${spreadLabel}${subjectNote}
 
@@ -80,7 +103,7 @@ ${spreadGuide}
 따뜻하고 생동감 있게 한국어로 답변하세요. 마크다운 없이 자연스러운 문장으로만 작성하세요.
 
 아래 형식을 반드시 지켜주세요:
-[요약] 전체 내용을 한 문장(30자 내외)으로 먼저 작성하세요.
+[요약] ${personPoss} 상황을 한 문장(30자 내외)으로 먼저 작성하세요.
 [본문] 400자 내외의 상세 해석을 작성하세요.`;
 
     console.log('Calling Anthropic API... spread:', spread);
