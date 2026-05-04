@@ -10,17 +10,8 @@
 <meta property="og:title"       content="타로 시그널 (Tarot Signal)"/>
 <meta property="og:description" content="타로카드로 확인하는 시그널"/>
 <meta property="og:site_name"   content="타로 시그널"/>
-<meta property="og:image"       content="https://charming-gumdrop-02ead2.netlify.app/tarot_signal_logo.jpeg"/>
-<meta property="og:image:width" content="1200"/>
-<meta property="og:image:height" content="630"/>
-<meta name="description"        content="타로카드로 확인하는 시그널"/>
-<!-- 카카오톡 -->
 <meta property="og:url"         content="https://charming-gumdrop-02ead2.netlify.app"/>
-<!-- 트위터 카드 -->
-<meta name="twitter:card"       content="summary_large_image"/>
-<meta name="twitter:title"      content="타로 시그널 (Tarot Signal)"/>
-<meta name="twitter:description" content="타로카드로 확인하는 시그널"/>
-<meta name="twitter:image"      content="https://charming-gumdrop-02ead2.netlify.app/tarot_signal_logo.jpeg"/>
+<meta name="description"        content="타로카드로 확인하는 시그널"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -342,8 +333,10 @@ textarea{resize:vertical;min-height:80px}
 .result-datetime{font-family:'Cinzel',serif;font-size:.62rem;color:#6a5e50;text-align:center;letter-spacing:.08em;margin-bottom:.9rem}
 .result-question{font-family:'Lora',Georgia,serif;font-size:.82rem;font-style:italic;color:#8a7d6a;text-align:center;margin-bottom:1.2rem;padding-bottom:.9rem;border-bottom:1px solid rgba(201,169,110,.12)}
 .result-question:empty{display:none}
-.result-cards-row{display:flex;gap:1rem;justify-content:center;margin-bottom:1.2rem}
+.result-cards-row{display:flex;gap:1rem;justify-content:center;margin-bottom:1.2rem;flex-wrap:wrap}
+.result-cards-row.celtic-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.7rem}
 .result-card-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;max-width:120px}
+.celtic-grid .result-card-item{max-width:none}
 .result-card-item .rc-label{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.12em;color:#7a6e5f;text-transform:uppercase}
 .rc-svg-wrap{position:relative;width:100%}
 .rc-svg-wrap .rc-svg{width:100%;aspect-ratio:72/118;border-radius:7px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.5)}
@@ -378,10 +371,77 @@ textarea{resize:vertical;min-height:80px}
 @media(max-width:480px){
   #result-modal{padding:1.5rem 1.1rem 1.3rem}
   .result-cards-row{gap:.6rem}
+  .result-cards-row.celtic-grid{grid-template-columns:repeat(5,1fr);gap:.4rem}
 }
 
-/* ── API Key 우측 상단 버튼 ── */
-#api-btn{
+/* ── ? 도움말 버튼 ── */
+#help-btn{
+  position:fixed;top:16px;right:16px;z-index:1000;
+  width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(201,169,110,.4);
+  background:rgba(13,10,26,.88);color:var(--gold);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:.85rem;font-weight:600;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:all .25s;
+}
+#help-btn:hover{background:rgba(201,169,110,.14);border-color:var(--gold);box-shadow:0 0 16px rgba(201,169,110,.18)}
+
+/* ── 도움말 모달 ── */
+#help-modal-bg{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;
+  padding:1.2rem;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:fadeIn .2s ease;
+}
+#help-modal-bg.on{display:flex}
+#help-modal{
+  background:#0d0a1a;
+  border:1px solid rgba(201,169,110,.3);
+  border-radius:16px;
+  padding:2.2rem 2rem 1.8rem;
+  width:100%;max-width:460px;
+  box-shadow:0 24px 60px rgba(0,0,0,.8),0 0 40px rgba(201,169,110,.1);
+  animation:slideUp .28s cubic-bezier(.2,.8,.3,1);
+  position:relative;
+}
+#help-close-btn{
+  position:absolute;top:14px;right:14px;
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(201,169,110,.12);
+  border:1px solid rgba(201,169,110,.3);
+  color:var(--gold);font-size:.8rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+#help-close-btn:hover{background:rgba(201,169,110,.25);border-color:var(--gold)}
+.help-quote{
+  font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.06em;
+  color:var(--gold);text-align:center;
+  border-top:1px solid rgba(201,169,110,.2);
+  border-bottom:1px solid rgba(201,169,110,.2);
+  padding:.9rem 0;margin-bottom:1.4rem;
+  line-height:1.7;
+}
+.help-body{
+  font-family:'Lora',Georgia,serif;font-size:.88rem;
+  color:#c8bca8;line-height:1.9;
+  margin-bottom:1.2rem;
+}
+.help-warning{
+  font-family:'Lora',Georgia,serif;font-size:.82rem;
+  color:#e8c47a;line-height:1.8;
+  background:rgba(201,169,110,.07);
+  border:1px solid rgba(201,169,110,.2);
+  border-radius:8px;padding:.8rem 1rem;
+  margin-bottom:1.4rem;
+}
+.help-footer{
+  font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;
+  color:var(--muted);text-align:center;
+}
   position:fixed;top:16px;right:16px;z-index:1000;
   font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
   padding:.45rem 1rem;border-radius:30px;
@@ -455,6 +515,26 @@ textarea{resize:vertical;min-height:80px}
 </head>
 <body>
 <div id="app">
+
+<!-- ── ? 도움말 버튼 ── -->
+<button id="help-btn" onclick="openHelpModal()" title="서비스 소개">?</button>
+
+<!-- ── 도움말 모달 ── -->
+<div id="help-modal-bg" onclick="closeHelpModal(event)">
+  <div id="help-modal">
+    <button id="help-close-btn" onclick="closeHelpModal()">✕</button>
+    <div class="help-quote">
+      "우주는 미신을 믿지 않습니다.<br>우리는 에너지 신호를 읽습니다."
+    </div>
+    <p class="help-body">
+      당신의 에너지는 실제입니다. Tarot Signal의 데이터센터는 지금 유례없는 강력한 '숙명적 에너지' 데이터로 포화 상태입니다. 우리는 이 에너지 데이터를 최신 '코스믹 알고리즘'으로 분석하여 당신에게 가장 적확한 시그널을 전달합니다.
+    </p>
+    <div class="help-warning">
+      ⚠️⚡️ 너무 강력한 에너지로 인해, 당신의 운명에 '긍정적 과부하'가 발생할 수 있습니다.
+    </div>
+    <div class="help-footer">당신의 에너지를 수집합니다. Tarot Signal.</div>
+  </div>
+</div>
 
 <!-- ── API Key 모달 ── -->
 <div id="api-modal-bg" onclick="closeApiModal(event)" style="display:none">
@@ -1271,7 +1351,8 @@ async function doReading() {
 
   // ── 카드 이미지 (스프레드 수만큼) ──
   const cardsRow = document.getElementById('result-cards-row');
-  cardsRow.innerHTML = slots.map((c, i) => {
+
+  const cardItemHTML = (c, i) => {
     const rev = c.reversed;
     const svgHTML = makeCardSVG(c, 90, 148, rev);
     return `
@@ -1282,7 +1363,15 @@ async function doReading() {
           ${rev ? '<div class="rc-rev-badge">역방향</div>' : ''}
         </div>
       </div>`;
-  }).join('');
+  };
+
+  if(currentSpread === 'celtic') {
+    cardsRow.className = 'result-cards-row celtic-grid';
+    cardsRow.innerHTML = slots.map((c, i) => cardItemHTML(c, i)).join('');
+  } else {
+    cardsRow.className = 'result-cards-row';
+    cardsRow.innerHTML = slots.map((c, i) => cardItemHTML(c, i)).join('');
+  }
 
   // ── Worker API 호출 ──
   const WORKER_URL = 'https://charming-gumdrop-02ead2.netlify.app/api/reading';
@@ -1704,6 +1793,17 @@ function showImageOverlay(dataUrl, filename) {
 
 let savedApiKey = '';
 
+function openHelpModal() {
+  document.getElementById('help-modal-bg').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeHelpModal(e) {
+  if(e && e.target !== document.getElementById('help-modal-bg')) return;
+  document.getElementById('help-modal-bg').classList.remove('on');
+  document.body.style.overflow = '';
+}
+
 function openApiModal() {
   document.getElementById('api-key-input').value = savedApiKey;
   updateApiStatus();
@@ -1764,6 +1864,7 @@ function closeResultModal(e) {
 // ESC 키로 결과 모달 닫기
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') {
+    document.getElementById('help-modal-bg').classList.remove('on');
     document.getElementById('api-modal-bg').style.display = 'none';
     document.getElementById('result-modal-bg').classList.remove('on');
     document.body.style.overflow = '';
