@@ -1488,42 +1488,38 @@ async function doReading() {
     cardsRow.innerHTML = slots.map((c, i) => cardItemHTML(c, i)).join('');
   }
 
-  // ── Claude API 직접 호출 ──
-  const apiKey = document.getElementById('api-key') ? document.getElementById('api-key').value.trim() : '';
+  // ── Netlify API 호출 ──
+  const WORKER_URL = 'https://charming-gumdrop-02ead2.netlify.app/api/reading';
 
   try {
-    const prompt = buildPrompt(question, subject, positions);
-    const promptWithSummary = prompt + `\n\n반드시 다음 형식으로 답변하세요:\n<summary>한 줄 핵심 요약 (20자 이내)</summary>\n<reading>본문 해석</reading>`;
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(WORKER_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: promptWithSummary }]
+        question : question,
+        subject  : subject,
+        spread   : currentSpread,
+        positions: positions,
+        cards    : slots.map((c, i) => ({
+          position: positions[i],
+          kr      : c.kr,
+          name    : c.name,
+          reversed: c.reversed,
+        })),
       })
     });
 
-    if(!res.ok) throw new Error(`API 오류 ${res.status}`);
+    if(!res.ok) throw new Error(`서버 오류 ${res.status}`);
     const data = await res.json();
-    const raw = data.content?.[0]?.text || '';
+    if(data.error) throw new Error(data.error);
 
-    const summaryMatch = raw.match(/<summary>([\s\S]*?)<\/summary>/);
-    const readingMatch = raw.match(/<reading>([\s\S]*?)<\/reading>/);
-    const summary = summaryMatch ? summaryMatch[1].trim() : '';
-    const text    = readingMatch ? readingMatch[1].trim() : raw.trim();
+    const text = data.text || '';
+    if(!text) throw new Error('응답이 비어있습니다');
 
-    const summaryHTML = summary ? `<div class="result-summary">✦ ${summary}</div>` : '';
-    rc.innerHTML = summaryHTML + `<div class="result-text">${text}</div>`;
+    rc.innerHTML = `<div class="result-text">${text}</div>`;
 
   } catch(e) {
-    // fallback — 내장 로직
+    console.error('API 오류:', e);
     const fallbackText = builtinReading(question, subject, positions);
     rc.innerHTML = `<div class="result-text">${fallbackText}</div>`;
   }
