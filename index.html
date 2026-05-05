@@ -223,28 +223,63 @@ textarea{resize:vertical;min-height:80px}
 .drop-slot.filled{border-style:solid;border-color:rgba(201,169,110,.4)}
 .slot-hint{font-family:'Cinzel',serif;font-size:.54rem;color:#4a4238;text-align:center;letter-spacing:.05em;padding:.3rem}
 
-/* 켈틱 크로스 2줄 */
-.celtic-wrap{display:flex;flex-direction:column;gap:1rem;align-items:center}
-.celtic-row{display:flex;gap:.6rem;justify-content:center}
-.celtic-row .slot-wrap{
-  flex:0 0 auto;
-  width:calc(20vw - 1.2rem);
-  max-width:110px;
-  min-width:60px;
+/* 켈틱 크로스 레이아웃 */
+.celtic-wrap {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(4, auto);
+  gap: .4rem;
+  align-items: center;
+  justify-items: center;
+  max-width: 500px;
+  margin: 0 auto;
 }
-.celtic-row .drop-slot{
-  width:100%;
-  aspect-ratio:110/185;
+.celtic-wrap .slot-wrap { width: 100%; max-width: 86px; }
+.celtic-wrap .drop-slot { width: 100%; aspect-ratio: 110/185; }
+.celt-empty { width: 100%; }
+
+/* 중앙 셀: 1번 + 2번 겹침 */
+.celt-center {
+  width: 100%;
+  max-width: 86px;
+  position: relative;
+}
+.celt-center > .slot-wrap { width: 100%; }
+
+/* 2번 카드(장애물) - 중앙에 가로로 겹침 */
+.celt-cross-slot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 130%;
+  z-index: 10;
+}
+.celt-cross-slot .slot-wrap { width: 100%; }
+.celt-cross-slot .drop-slot {
+  aspect-ratio: 185/110 !important;
+  border-color: rgba(201,169,110,.5);
+  background: rgba(13,10,26,.85);
+}
+.celt-cross-slot .slot-inner {
+  transform: rotate(90deg);
+  transform-origin: center center;
+}
+.celt-cross-slot .slot-label {
+  font-size: .48rem;
+  text-align: center;
+  margin-bottom: .15rem;
 }
 
 @media(max-width:480px){
   .spread-btn{min-width:calc(50% - .3rem);max-width:none}
-  .celtic-row .slot-wrap{max-width:60px}
+  .celtic-wrap .slot-wrap { max-width: 58px; }
+  .celt-center { max-width: 58px; }
 }
 
 .slot-inner{width:100%;height:100%;border-radius:8px;overflow:hidden;position:relative}
 .slot-inner svg{width:100%;height:100%;display:block;border-radius:8px}
-.slot-inner.reversed svg{transform:rotate(180deg)}
+
 .rev-badge{
   position:absolute;font-family:'Cinzel',serif;font-size:.42rem;
   letter-spacing:.08em;text-transform:uppercase;
@@ -343,7 +378,6 @@ textarea{resize:vertical;min-height:80px}
 .rc-svg-wrap{position:relative;width:100%}
 .rc-svg-wrap .rc-svg{width:100%;aspect-ratio:72/118;border-radius:7px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .rc-svg-wrap .rc-svg svg{width:100%;height:100%;display:block}
-.rc-svg-wrap.reversed .rc-svg svg{transform:rotate(180deg)}
 .rc-rev-badge{
   position:absolute;
   bottom:5px;left:50%;transform:translateX(-50%);
@@ -1226,7 +1260,7 @@ const SPREADS = {
     count: 10,
     hint: '열 장의 카드를 아래 칸으로 옮겨주세요',
     subtitle: '10장의 카드로 심층 분석을 해드려요.',
-    positions: ['현재 상황','도전/장애','먼 과거','가까운 과거','가능한 결과','가까운 미래','내면의 자아','외부 영향','희망/두려움','최종 결과'],
+    positions: ['현재 상황','장애물','기저','과거','곧 일어날 일','가까운 미래','본인의 내면','외부의 영향력','희망/두려움','결말'],
   },
 };
 
@@ -1355,15 +1389,37 @@ function renderSlots(type) {
   const area = document.getElementById('slots-area');
 
   if(type === 'celtic') {
-    // 켈틱 크로스: 5장씩 2줄
+    const p = spread.positions;
     area.innerHTML = `
       <div class="celtic-wrap">
-        <div class="celtic-row">
-          ${spread.positions.slice(0,5).map((pos,i) => slotHTML(i, pos)).join('')}
+        <div class="celt-empty"></div>
+        <div class="celt-empty"></div>
+        ${slotHTML(4, p[4], 'celt-s5')}
+        <div class="celt-empty"></div>
+        ${slotHTML(9, p[9], 'celt-s10')}
+
+        ${slotHTML(3, p[3], 'celt-s4')}
+        <div class="celt-center" style="position:relative">
+          ${slotHTML(0, p[0])}
+          <div class="celt-cross-slot">
+            ${slotHTML(1, p[1])}
+          </div>
         </div>
-        <div class="celtic-row">
-          ${spread.positions.slice(5,10).map((pos,i) => slotHTML(i+5, pos)).join('')}
-        </div>
+        ${slotHTML(5, p[5], 'celt-s6')}
+        <div class="celt-empty"></div>
+        ${slotHTML(8, p[8], 'celt-s9')}
+
+        <div class="celt-empty"></div>
+        <div class="celt-empty"></div>
+        <div class="celt-empty"></div>
+        <div class="celt-empty"></div>
+        ${slotHTML(7, p[7], 'celt-s8')}
+
+        <div class="celt-empty"></div>
+        ${slotHTML(2, p[2], 'celt-s3')}
+        <div class="celt-empty"></div>
+        <div class="celt-empty"></div>
+        ${slotHTML(6, p[6], 'celt-s7')}
       </div>`;
   } else {
     area.innerHTML = `
@@ -1378,9 +1434,9 @@ function renderSlots(type) {
   });
 }
 
-function slotHTML(idx, label) {
+function slotHTML(idx, label, extraClass='') {
   return `
-    <div class="slot-wrap">
+    <div class="slot-wrap${extraClass ? ' '+extraClass : ''}">
       <div class="slot-label">${label}</div>
       <div class="drop-slot" id="slot-${idx}" data-slot="${idx}">
         <div class="slot-hint">카드를<br>여기로</div>
